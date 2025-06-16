@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/MixoLoggerBack/">
+    <Project Path="MixoLoggerBack/Application/Application.csproj" />
+    <Project Path="MixoLoggerBack/Domain/Domain.csproj" />
+    <Project Path="MixoLoggerBack/Infrastructure/Infrastructure.csproj" />
+    <Project Path="MixoLoggerBack/Web/Web.csproj" />
+  </Folder>
+</Solution>

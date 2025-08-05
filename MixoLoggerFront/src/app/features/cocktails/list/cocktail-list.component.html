@@ -1,0 +1,8 @@
+<h2>Liste des cocktails</h2>
+<ul>
+  @for (cocktail of cocktails(); track cocktail.id) {
+    <li>
+      <a [routerLink]="['/cocktails', cocktail.id]">{{ cocktail.name }}</a>
+    </li>
+  }
+</ul>

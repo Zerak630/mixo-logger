@@ -1,0 +1,14 @@
+<div>
+  <h2>Détail du cocktail</h2>
+  <h3>{{ cocktail().name }}</h3>
+  <p>{{ cocktail().description }}</p>
+  <button (click)="baisserNbVerres()">-</button>
+  <span>{{ nbVerres() }}</span>
+  <button (click)="augmenterNbVerres()">+</button>
+  <h4>Ingrédients :</h4>
+  <ul>
+    @for (ingredient of cocktail().ingredients; track ingredient) {
+      <li>{{ nbVerres() * ingredient.volume.value }}{{ ingredient.volume.unit }} {{ ingredient.ingredient.name }}</li>
+    }
+  </ul>
+</div>

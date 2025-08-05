@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { CocktailDetail } from '../../../models/cocktail';
+import { CocktailsService } from '../cocktails.service';
 
 @Component({
   selector: 'cocktail-detail',
@@ -9,7 +10,10 @@ import { CocktailDetail } from '../../../models/cocktail';
 })
 export default class CocktailDetailComponent {
   readonly cocktail = input.required<CocktailDetail>();
+
   nbVerres = signal(1);
+
+  readonly cocktailService = inject(CocktailsService);
 
   async augmenterNbVerres() {
     this.nbVerres.update(value => value + 1);
@@ -17,5 +21,13 @@ export default class CocktailDetailComponent {
 
   async baisserNbVerres() {
     this.nbVerres.update(value => value > 1 ? value - 1 : value);
+  }
+
+  async makeThisCocktail() {
+    if(await this.cocktailService.makeCocktail(this.cocktail().id)) {
+      alert('Cocktail en cours de préparation !');
+    } else {
+      alert('Erreur lors de la préparation du cocktail.');
+    }
   }
 }

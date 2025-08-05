@@ -1,20 +1,22 @@
 using Application.Cocktails.Dtos;
 using Domain.Cocktails;
 using Domain.Interfaces.Repositories;
+using MediatR;
 
 namespace Application.Cocktails.Commands;
 
-public class CreateCocktailCommand
+public class CreateCocktailCommand : IRequest<Guid>
 {
 	public required string Name { get; set; }
 	public string? Description { get; set; }
-	public List<CocktailIngredientDto> Ingredients { get; set; } = new();
+	public List<CocktailIngredientDto> Ingredients { get; set; } = [];
+	public List<EtapeRecette> Etapes { get; set; } = [];
 }
 
 public class CreateCocktailCommandHandler(
 	ICocktailRepository cocktailRepository,
 	IIngredientRepository ingredientRepository
-)
+) : IRequestHandler<CreateCocktailCommand, Guid>
 {
 	public async Task<Guid> Handle(CreateCocktailCommand command, CancellationToken cancellationToken = default)
 	{
@@ -27,7 +29,7 @@ public class CreateCocktailCommandHandler(
 			return new CocktailIngredient(ingredient, dto.Quantity, UniteVolume.FromString(dto.Unit));
 		}));
 
-		var cocktail = new Cocktail(command.Name, ingredients, command.Description);
+		var cocktail = new Cocktail(command.Name, ingredients, command.Etapes, command.Description);
 		await cocktailRepository.AddAsync(cocktail);
 		return cocktail.Id;
 	}

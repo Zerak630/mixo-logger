@@ -11,9 +11,4 @@ import { Cocktail } from '../../../models/cocktail';
 })
 export default class CocktailListComponent {
   readonly cocktails = input.required<Cocktail[]>();
-
-  ngOnInit() {
-    console.log('CocktailListComponent initialized');
-    console.log('Cocktails:', this.cocktails());
-  }
 }

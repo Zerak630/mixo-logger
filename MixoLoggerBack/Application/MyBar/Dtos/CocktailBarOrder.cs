@@ -1,0 +1,1 @@
+public record CocktailBarOrder(Guid CocktailId, int Quantity);

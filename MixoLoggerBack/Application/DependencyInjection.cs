@@ -17,6 +17,8 @@ public static class DependencyInjection
 
         // Enregistrement des services d'application
         services.AddScoped<ICocktailRepository, CocktailRepository>();
+        services.AddScoped<IIngredientRepository, IngredientRepository>();
+        services.AddScoped<IBarRepository, BarRepository>();
 
         return services;
     }

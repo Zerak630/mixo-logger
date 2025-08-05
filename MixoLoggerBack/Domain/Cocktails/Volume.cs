@@ -1,10 +1,24 @@
 using Domain.Interfaces;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Domain.Cocktails;
 
-public record Volume(double Value, UniteVolume Unit) : IValueObject
+
+public record Volume : IValueObject
 {
-	// The primary constructor already handles (double, UniteVolume), so no need for an explicit one.
+	public double Value { get; }
+
+    public UniteVolume Unit { get; }
+
+	public Volume(double value, UniteVolume unit)
+	{
+		if (value < 0)
+			throw new ArgumentOutOfRangeException(nameof(value), "Volume must be non-negative.");
+
+		Value = value;
+		Unit = unit ?? throw new ArgumentNullException(nameof(unit), "Unit cannot be null.");
+	}
 
 	public static Volume operator +(Volume a, Volume b)
 	{
@@ -21,16 +35,15 @@ public record Volume(double Value, UniteVolume Unit) : IValueObject
 
 		return new Volume(a.Value - b.Value, a.Unit);
 	}
-
-
 }
 
+[JsonConverter(typeof(UniteVolumeConverter))]
 public class UniteVolume : IValueObject
 {
-	public static UniteVolume Mililitre { get; } = new UniteVolume("Mililitre");
-	public static UniteVolume Centilitre { get; } = new UniteVolume("Centilitre");
-	public static UniteVolume Decilitre { get; } = new UniteVolume("Decilitre");
-	public static UniteVolume Litre { get; } = new UniteVolume("Litre");
+	public static UniteVolume Mililitre { get; } = new UniteVolume("mL");
+	public static UniteVolume Centilitre { get; } = new UniteVolume("cL");
+	public static UniteVolume Decilitre { get; } = new UniteVolume("dL");
+	public static UniteVolume Litre { get; } = new UniteVolume("L");
 
 	private string Name { get; }
 
@@ -40,15 +53,28 @@ public class UniteVolume : IValueObject
 	}
 
 	public override string ToString() => Name;
-	public static UniteVolume FromString(string name)
+	public static UniteVolume FromString(string? name)
 	{
 		return name switch
 		{
-			"Mililitre" => Mililitre,
-			"Centilitre" => Centilitre,
-			"Decilitre" => Decilitre,
-			"Litre" => Litre,
+			"mL" => Mililitre,
+			"cL" => Centilitre,
+			"dL" => Decilitre,
+			"L" => Litre,
 			_ => throw new ArgumentException($"Unknown unit: {name}", nameof(name))
 		};
 	}
+}
+
+public class UniteVolumeConverter : JsonConverter<UniteVolume>
+{
+    public override UniteVolume? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return UniteVolume.FromString(reader.GetString());
+    }
+
+    public override void Write(Utf8JsonWriter writer, UniteVolume value, JsonSerializerOptions options)
+    {
+		writer.WriteStringValue(value.ToString());
+    }
 }

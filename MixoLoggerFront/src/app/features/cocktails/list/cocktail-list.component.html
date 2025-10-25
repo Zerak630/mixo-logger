@@ -2,7 +2,9 @@
 <ul>
   @for (cocktail of cocktails(); track cocktail.id) {
     <li>
-      <a [routerLink]="['/cocktails', cocktail.id]">{{ cocktail.name }}</a>
+      <a [routerLink]="['/cocktails', cocktail.id]">
+        <cocktail-card [cocktail]="cocktail"></cocktail-card>
+      </a>
     </li>
   }
 </ul>

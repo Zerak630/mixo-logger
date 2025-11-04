@@ -5,14 +5,13 @@
 <h2 class="title">{{ cocktail().name }}</h2>
 
 <div class="footer">
-  <button pButton type="button">
-    <i class="pi pi-star" aria-hidden="true"></i>
+  <button pButton type="button" [tabindex]="isFocused() ? 0 : -1" icon="pi pi-star">
     <span class="sr-only">Ajouter aux favoris</span>
   </button>
-  <button pButton type="button" icon="pi pi-share-alt">
+  <button pButton type="button" [tabindex]="isFocused() ? 0 : -1" icon="pi pi-share-alt">
     <span class="sr-only">Partager</span>
   </button>
-  <button pButton type="button" icon="pi pi-check">
+  <button pButton type="button" [tabindex]="isFocused() ? 0 : -1" icon="pi pi-check">
     <span class="sr-only">Réaliser le cocktail</span>
   </button>
 </div>

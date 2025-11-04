@@ -2,8 +2,8 @@
 <ul>
   @for (cocktail of cocktails(); track cocktail.id) {
     <li>
-      <a [routerLink]="['/cocktails', cocktail.id]">
-        <cocktail-card [cocktail]="cocktail"></cocktail-card>
+      <a #link [href]="'cocktails/' + cocktail.id" (keypress)="handleKeyPress($event, card, link)">
+        <cocktail-card #card [cocktail]="cocktail"></cocktail-card>
       </a>
     </li>
   }

@@ -2,14 +2,14 @@
 ul {
   list-style: none;
   padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
 }
 li {
+  width: fit-content;
   padding: 8px;
-  border-bottom: 1px solid #eee;
   cursor: pointer;
-}
-li:hover {
-  background: #f5f5f5;
 }
 
 a {

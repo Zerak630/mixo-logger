@@ -1,10 +1,9 @@
 <header>
-  <h1>MixoLogger</h1>
-  <nav>
-    <a href="/cocktails" routerLinkActive="active">Cocktails</a>
-    <a href="/about" routerLinkActive="active">À propos</a>
-    <a href="/contact" routerLinkActive="active">Contact</a>
-  </nav>
+  <p-menubar [model]="menuItems">
+    <ng-template #start>
+      <h1>MixoLogger</h1>
+    </ng-template>
+  </p-menubar>
 </header>
 
 <main>

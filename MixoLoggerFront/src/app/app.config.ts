@@ -3,10 +3,10 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import Aura from '@primeuix/themes/aura';
 import { providePrimeNG } from 'primeng/config';
 import { routes } from './app.routes';
 import { httpInterceptor } from './core/http-interceptor';
+import { MyPreset } from './styles/customTheme';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -17,7 +17,13 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     providePrimeNG({
       theme: {
-        preset: Aura
+        preset: MyPreset,
+        options: {
+          // cssLayer: {
+          //   name: 'primeng',
+          //   order: 'app-styles, primeng, another-css-library'
+          // }
+        }
       }
     })
   ]

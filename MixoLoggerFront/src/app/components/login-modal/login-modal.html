@@ -1,0 +1,27 @@
+<p-button (click)="isModalVisible.set(true)">Connexion</p-button>
+
+<p-dialog header="Connexion" [modal]="true" [(visible)]="isModalVisible">
+	<form [formGroup]="connexionForm">
+		<p-floatlabel variant="on">
+			<label for="in_label_identifiant">
+				Identifiant
+			</label>
+			<input pInputText id="in_label_identifiant" [formControl]="controls.username" type="text"
+				autocomplete="username" required />
+		</p-floatlabel>
+		<p-floatlabel variant="on">
+			<p-iconfield>
+				<input pInputText id="in_label_password" [formControl]="controls.password" autocomplete="off"
+					[type]="typePasswordInput()"/>
+				<p-inputicon [title]="this.titlePasswordInput()" [class]="'pi ' + this.iconPasswordInput()" tabindex="0"
+					(click)="hidePasswordInput.toggle()" (keypress)="hidePasswordInput.toggle()"/>
+			</p-iconfield>
+			<label for="in_label_password">
+				Mot de passe
+			</label>
+		</p-floatlabel>
+		<div>
+			<p-button type="submit" (click)="onLoginCLick()">Connexion</p-button>
+		</div>
+	</form>
+</p-dialog>

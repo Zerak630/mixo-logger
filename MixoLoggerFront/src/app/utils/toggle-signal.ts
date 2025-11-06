@@ -6,7 +6,7 @@ interface ToggleableFunction {
 	 * @param initialValue Initial value
 	 * @param otherValue Value to toggle to
 	 */
-	<T extends string | number | symbol | object, U extends T>(initialValue: T, otherValue: U): ToggleableSignal<T | U>;
+	<T extends string | number | symbol | object>(initialValue: T, otherValue: T): ToggleableSignal<T>;
 	/**
 	 * Creates a boolean signal that can be toggled
 	 * @param initalState Initial boolean value

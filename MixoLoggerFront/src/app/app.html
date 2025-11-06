@@ -4,7 +4,11 @@
 			<h1>MixoLogger</h1>
 		</ng-template>
 		<ng-template #end>
-			<p-avatar image="https://primefaces.org/cdn/primeng/images/demo/avatar/amyelsner.png" shape="circle" />
+			@if(userService.isConnected()) {
+				<p-avatar image="https://primefaces.org/cdn/primeng/images/demo/avatar/amyelsner.png" shape="circle" />
+			} @else {
+				<login-modal/>
+			}
 		</ng-template>
 	</p-menubar>
 </header>

@@ -1,16 +1,21 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { Avatar } from 'primeng/avatar';
+import { DialogService } from 'primeng/dynamicdialog';
 import { Menubar } from 'primeng/menubar';
+import LoginModalComponent from './components/login-modal/login-modal';
+import UserService from './core/user.service';
 
 @Component({
 	selector: 'app-root',
 	imports: [
 		RouterOutlet,
 		Menubar,
-		Avatar
+		Avatar,
+		LoginModalComponent
 	],
+	providers: [DialogService],
 	templateUrl: './app.html',
 	styleUrl: './app.scss'
 })
@@ -35,4 +40,6 @@ export class App {
 			routerLink: "/contact"
 		},
 	];
+
+	protected readonly userService = inject(UserService);
 }

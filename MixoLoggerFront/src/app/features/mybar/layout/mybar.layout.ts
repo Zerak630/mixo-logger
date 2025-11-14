@@ -1,5 +1,5 @@
 import { Component, input } from "@angular/core";
-import { CocktailComponent, Ingredient } from "../../../models/cocktail";
+import { CocktailComponent } from "../../../models/cocktail";
 
 @Component({
 	templateUrl: "./mybar.layout.html",

@@ -1,0 +1,8 @@
+<section class="bar_visual"></section>
+
+<ul>
+    @for (item of stockList(); track $index) {
+        <li>{{ item.ingredient.name }}</li>
+    }
+</ul>
+

@@ -1,6 +1,10 @@
 import { Observable, of } from "rxjs";
 import { CocktailComponent, UniteVolume } from "../../models/cocktail";
+import { Injectable } from "@angular/core";
 
+@Injectable({
+	providedIn: "root"
+})
 export class MyBarService {
 	private readonly INGREDIENTS: CocktailComponent[] = [
 		{

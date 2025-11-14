@@ -1,5 +1,6 @@
 
 import { Routes } from '@angular/router';
+import { myBarResolver } from './features/mybar/mybar.resolver';
 
 export const routes: Routes = [
 	{
@@ -8,6 +9,7 @@ export const routes: Routes = [
 	},
 	{
 		path: 'my_bar',
-		loadComponent: () => import('./features/mybar/layout/mybar.layout')
+		loadComponent: () => import('./features/mybar/layout/mybar.layout'),
+		resolve: { stockList: myBarResolver }
 	},
 ];

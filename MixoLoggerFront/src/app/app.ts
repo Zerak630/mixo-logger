@@ -1,11 +1,12 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { MenuItem } from 'primeng/api';
+import { MenuItem, MessageService } from 'primeng/api';
 import { Avatar } from 'primeng/avatar';
 import { DialogService } from 'primeng/dynamicdialog';
 import { Menubar } from 'primeng/menubar';
 import LoginModalComponent from './components/login-modal/login-modal';
 import UserService from './core/user.service';
+import { ToastModule } from 'primeng/toast';
 
 @Component({
 	selector: 'app-root',
@@ -13,9 +14,13 @@ import UserService from './core/user.service';
 		RouterOutlet,
 		Menubar,
 		Avatar,
-		LoginModalComponent
+		LoginModalComponent,
+		ToastModule
 	],
-	providers: [DialogService],
+	providers: [
+		DialogService,
+		MessageService
+	],
 	templateUrl: './app.html',
 	styleUrl: './app.scss'
 })

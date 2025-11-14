@@ -5,7 +5,7 @@
 <h2 class="title">{{ cocktail().name }}</h2>
 
 <div class="footer">
-  <button pButton type="button" [tabindex]="isFocused() ? 0 : -1" icon="pi pi-star">
+  <button pButton type="button" [tabindex]="isFocused() ? 0 : -1" icon="pi pi-star" (click)="toggleFavorite($event)">
     <span class="sr-only">Ajouter aux favoris</span>
   </button>
   <button pButton type="button" [tabindex]="isFocused() ? 0 : -1" icon="pi pi-share-alt">

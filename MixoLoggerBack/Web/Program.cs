@@ -22,7 +22,9 @@ builder.Services.AddCors(options =>
 builder.Services.AddSwaggerGen(builder =>
 {
     builder.SupportNonNullableReferenceTypes();
-    builder.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    // Microsoft.OpenApi 3.x a supprimé le sous-espace de noms `Models` :
+    // OpenApiInfo vit désormais directement sous `Microsoft.OpenApi`.
+    builder.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
     {
         Title = "MixoLogger API",
         Version = "v1",

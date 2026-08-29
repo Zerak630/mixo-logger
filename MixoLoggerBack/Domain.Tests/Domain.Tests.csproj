@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <!-- xUnit v3 : les projets de test sont des exécutables -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <!--
+    xUnit v3 embarque Microsoft.Testing.Platform : ni Microsoft.NET.Test.Sdk ni
+    l'adaptateur VSTest xunit.runner.visualstudio ne sont nécessaires. Les ajouter
+    réactive la cible VSTest, que le SDK .NET 10+ refuse de faire tourner.
+    L'opt-in `dotnet test` est déclaré dans le dotnet.config à la racine du dépôt.
+  -->
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\Domain.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -22,7 +22,7 @@ public class Cocktail : IAggregate
 		Ingredients = new List<CocktailIngredient>(ingredients).AsReadOnly();
 
 		if (etapes == null || !etapes.Any())
-			throw new ArgumentException("Un cocktail doit avoir au moins une étape.", nameof(ingredients));
+			throw new ArgumentException("Un cocktail doit avoir au moins une étape.", nameof(etapes));
 		EtapeRecettes = new List<EtapeRecette>(etapes).AsReadOnly();
 	}
 }

@@ -3,5 +3,40 @@
     height: 80%;
     background-color: darkblue;
     border-radius: 25%;
-    
+
+}
+
+.stock {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    &__ligne {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #E0E0E0;
+    }
+
+    &__nom {
+        color: #F5F5F5;
+    }
+
+    &__niveau {
+        color: #E0E0E0;
+        font-size: 0.875rem;
+
+        // Une ligne en suivi précis affiche un volume : on la distingue de la
+        // simple possession, qui n'affiche qu'un niveau approximatif.
+        &--precis {
+            color: #8A2BE2;
+        }
+    }
+
+    &__vide {
+        color: #E0E0E0;
+        padding: 0.5rem 0;
+    }
 }

@@ -10,6 +10,6 @@ export const routes: Routes = [
 	{
 		path: 'my_bar',
 		loadComponent: () => import('./features/mybar/layout/mybar.layout'),
-		resolve: { stockList: myBarResolver }
+		resolve: { bar: myBarResolver }
 	},
 ];

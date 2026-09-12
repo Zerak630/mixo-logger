@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { CocktailDetail } from '../../../models/cocktail';
 import { CocktailsService } from '../cocktails.service';
@@ -24,10 +25,15 @@ export default class CocktailDetailComponent {
   }
 
   async makeThisCocktail() {
-    if(await this.cocktailService.makeCocktail(this.cocktail().id)) {
+    try {
+      // Le nombre de verres est désormais transmis : l'API décompte la commande
+      // entière, ou n'en décompte aucune part si le stock ne suffit pas.
+      await this.cocktailService.makeCocktail(this.cocktail().id, this.nbVerres());
       alert('Cocktail en cours de préparation !');
-    } else {
-      alert('Erreur lors de la préparation du cocktail.');
+    } catch (erreur) {
+      alert(erreur instanceof HttpErrorResponse && erreur.error?.detail
+        ? erreur.error.detail
+        : 'Erreur lors de la préparation du cocktail.');
     }
   }
 }

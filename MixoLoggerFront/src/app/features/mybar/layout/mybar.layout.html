@@ -1,8 +1,14 @@
 <section class="bar_visual"></section>
 
-<ul>
-    @for (item of stockList(); track $index) {
-        <li>{{ item.ingredient.name }}</li>
+<ul class="stock">
+    @for (ligne of stockList(); track ligne.name) {
+        <li class="stock__ligne">
+            <span class="stock__nom">{{ ligne.name }}</span>
+            <span class="stock__niveau" [class.stock__niveau--precis]="ligne.suiviPrecis">
+                {{ libelleQuantite(ligne) }}
+            </span>
+        </li>
+    } @empty {
+        <li class="stock__vide">Ton bar est vide.</li>
     }
 </ul>
-

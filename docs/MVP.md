@@ -30,10 +30,10 @@
 
 | # | Fonctionnalité | Priorité | État |
 |---|----------------|----------|------|
-| F1 | Consulter la liste des cocktails | Must | ✅ Fait (données en mémoire) |
+| F1 | Consulter la liste des cocktails | Must | ✅ Fait (données en mémoire) — branché sur l'API le 13/09/2026 : l'écran affichait jusque-là une liste codée en dur |
 | F2 | Consulter le détail d'un cocktail (ingrédients + étapes) | Must | ✅ Fait |
-| F3 | Gérer « Mon Bar » (stock d'ingrédients) | Must | 🟡 Lecture seule + « préparer » ; pas d'ajout/retrait |
-| F4 | Savoir quels cocktails sont réalisables avec le stock | Must | 🟡 Implémenté mais non fonctionnel (cf. §7, bug B1) |
+| F3 | Gérer « Mon Bar » (stock d'ingrédients) | Must | 🟡 API complète (ajout / niveau / retrait) ; écran encore en lecture seule |
+| F4 | Savoir quels cocktails sont réalisables avec le stock | Must | 🟡 `CanMake` fonctionne enfin (B1 corrigé) ; pas encore exposé ni affiché |
 | F5 | Ajouter / éditer une recette | Must | ❌ `CreateCocktailCommand` existe, pas d'endpoint ni d'écran |
 | F6 | Se connecter | Must | 🟡 Mock front uniquement (utilisateur en dur) |
 | F7 | Noter un cocktail (⭐) | Should | ❌ Non modélisé |
@@ -57,10 +57,10 @@
 
 | Composant | Cible | État du dépôt |
 |-----------|-------|---------------|
-| Frontend | **Angular 22** (standalone, signals, zoneless) | 🔺 Angular 20 — 2 majeures de retard |
-| Composants UI | **OptimusUI** (`@openng/optimus-ui` 2.x, MIT) | 🔺 PrimeNG 20 — à migrer |
+| Frontend | **Angular 22** (standalone, signals, zoneless) | 🟡 Angular 21 — A2 à mi-chemin |
+| Composants UI | **OptimusUI** (`@openng/optimus-ui` 2.x, MIT) | 🔺 PrimeNG 20 — à migrer ; **hors support avec Angular 21** |
 | CSS | Écrit à la main par l'auteur ; OptimusUI réservé aux composants complexes | — |
-| Backend | **.NET 11** (préversion jusqu'au 10/11/2026) | 🔺 .NET 9 |
+| Backend | **.NET 11** (préversion jusqu'au 10/11/2026) | ✅ `net11.0`, SDK épinglé par `global.json` (A1) |
 | Médiateur | **MediatR 13** (CQRS : Commands / Queries) | ✅ En place |
 | API | REST + Swagger / OpenAPI | ✅ En place |
 | Persistance | **Aucune** (repositories `static` en mémoire) — choix assumé, cf. F10 | ✅ Conforme |
@@ -137,7 +137,7 @@ erDiagram
     COCKTAIL_INGREDIENT ||--|| VOLUME : "quantite"
     BAR ||--o{ STOCK_LIGNE : "possede"
     STOCK_LIGNE }o--|| INGREDIENT : "reference"
-    STOCK_LIGNE ||--|| VOLUME : "quantite"
+    STOCK_LIGNE |o--o| VOLUME : "quantite (optionnelle)"
 
     COCKTAIL {
         guid Id
@@ -147,7 +147,14 @@ erDiagram
     INGREDIENT {
         guid Id
         string Name
+        string NormalizedName
+        string_set Aliases
         datetime CreatedAt
+    }
+    STOCK_LIGNE {
+        string Niveau
+        double VolumeValue
+        string VolumeUnit
     }
     ETAPE_RECETTE {
         int Ordre
@@ -164,7 +171,13 @@ erDiagram
 ```
 
 - `Volume` est un **value object** (`record`) : valeur + unité (`mL`, `cL`, `dL`, `L`), avec conversion
-  automatique en millilitres lors des opérations `+`, `-`, `<`, `>` (`Domain/Units/VolumeConverter.cs`).
+  automatique en millilitres lors des opérations `+`, `-`, `*`, `<`, `>` (`Domain/Units/VolumeConverter.cs`).
+- **`Ingredient` s'identifie par `NormalizedName`**, pas par `Id` : accents, casse et ponctuation sont
+  neutralisés. Les `Aliases` ne participent pas à l'égalité (elle deviendrait non transitive) ; ils
+  servent au référentiel à résoudre une saisie libre vers l'ingrédient canonique.
+- **`LigneStock` a deux modes** : *possession simple* (`Volume` à `null`, seul le `Niveau` est connu —
+  mode nominal du grand public) et *suivi précis* (un `Volume` décrémenté à chaque cocktail). Une ligne
+  absente signifie « je n'ai pas cet ingrédient ». Cf. [STRATEGIE.md](STRATEGIE.md) §3.
 - `UniteVolume` se sérialise en chaîne (`"mL"`) via `UniteVolumeConverter`.
 
 ### 3.2 À ajouter pour couvrir les objectifs
@@ -194,7 +207,18 @@ Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
 | `GET` | `/api/cocktails` | — | `Cocktail[]` | ⚠️ renvoie l'entité de domaine, pas un DTO |
 | `GET` | `/api/cocktails/{id}` | — | `Cocktail` | ⚠️ pas de 404 si absent |
 | `GET` | `/api/bars` | — | `MyBarDto` | Bar unique global |
-| `POST` | `/api/bars/MakeCocktails` | `MakeCocktailCommand` | `bool` | ⚠️ `bool` nu ; pas de raison d'échec |
+| `POST` | `/api/bars/MakeCocktails` | `CocktailBarOrder[]` | `MyBarDto` | Tout ou rien ; `409` si infaisable |
+| `POST` | `/api/bars/ingredients` | `{ name, niveau?, quantity? }` | `MyBarDto` | `quantity` facultatif = possession simple ; `name` accepte un alias |
+| `PATCH` | `/api/bars/ingredients/{name}` | `{ niveau }` | `MyBarDto` | `Pleine` \| `Entamee` \| `PresqueFinie` |
+| `DELETE` | `/api/bars/ingredients/{name}` | — | `MyBarDto` | `404` si absent du bar |
+
+> Le corps de `MakeCocktails` est un **tableau nu**, pas `{ "order": [...] }` : l'attribut `[FromBody]`
+> posé sur la propriété `Order` de la commande lie le corps entier à cette propriété. Contre-intuitif,
+> et directement lié à B8 (les attributs MVC n'ont rien à faire dans `Application`).
+
+Les erreurs du domaine sont traduites en `ProblemDetails` (RFC 7807) par `Web/DomainExceptionHandler` :
+`KeyNotFoundException` → 404, `ArgumentException` → 400, `InvalidOperationException` → 409. La reprise
+des autres controllers reste à faire (B5).
 
 ### 4.2 À ajouter
 
@@ -202,8 +226,7 @@ Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
 |-------|-------|-------|
 | `POST` | `/api/cocktails` | Créer une recette (`CreateCocktailCommand` existe déjà, non exposé) |
 | `PUT` / `DELETE` | `/api/cocktails/{id}` | Éditer / supprimer |
-| `POST` | `/api/bars/ingredients` | Ajouter du stock |
-| `PATCH` | `/api/bars/ingredients/{id}` | Corriger une quantité |
+| `GET` | `/api/ingredients` | Exposer le référentiel (autocomplétion à la saisie du stock) |
 | `GET` | `/api/cocktails?makeable=true` | Filtrer sur le stock |
 | `POST` | `/api/cocktails/{id}/ratings` | Noter |
 | `POST` | `/api/auth/login` | S'authentifier |
@@ -319,25 +342,41 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
 
 ## 7. Dette technique et anomalies identifiées
 
-- **B1 — `Bar.CanMake()` renvoie toujours `false`.** `Ingredient` est une `class` sans surcharge de
+- **B1 — `Bar.CanMake()` renvoie toujours `false`.** ✅ **Corrigé.** L'identité d'`Ingredient` porte
+  désormais sur son nom normalisé (`IngredientName.Normalize` — accents, casse, ponctuation), et
+  `IngredientReferentiel` résout les alias vers l'ingrédient canonique (« rhum », « white rum » →
+  « Rhum blanc »). Les seeds cocktails et bar passent par lui. Constat d'origine : `Ingredient` est une `class` sans surcharge de
   `Equals`/`GetHashCode`, et son constructeur génère un `Guid.NewGuid()`. La comparaison se fait donc
   par référence : l'`Ingredient("Rhum")` du cocktail et l'`Ingredient("Rhum")` du bar sont deux objets
   distincts, et le `Ingredients.TryGetValue(...)` de `Bar.CanMake` échoue systématiquement.
   → Identifier les ingrédients par nom normalisé (ou par `Id` issu d'un référentiel partagé) et
   implémenter l'égalité en conséquence.
-- **B2 — Stockage en mémoire non thread-safe.** L'absence de persistance est un choix assumé (F10),
+- **B2 — Stockage en mémoire non thread-safe.** ✅ **Corrigé pour le bar.** `BarRepository.GetBar()`
+  renvoie une copie (`Bar.Snapshot()`) : chaque requête travaille sur sa propre instance. `SaveAsync`
+  applique un **contrôle de concurrence optimiste** (`Bar.Version`) et lève
+  `ConflitDeConcurrenceException` (→ 409) si la version lue est périmée. Point vérifié par un tir de
+  40 ajouts simultanés : sans ce contrôle, la copie seule faisait perdre **5 écritures sur 40 en silence**
+  (40 réponses 200, 35 lignes enregistrées) ; avec, chaque 200 correspond à une ligne enregistrée et les
+  requêtes perdantes reçoivent un 409 explicite. `CocktailRepository` était déjà sur `ConcurrentDictionary`.
+  Le mécanisme de version se transposera tel quel en *row version* EF Core. Constat d'origine : l'absence de persistance est un choix assumé (F10),
   mais son implémentation ne l'est pas : `CocktailRepository` et `BarRepository` exposent des
   `List<T>` / `Dictionary<K,V>` `static`, partagés par toutes les requêtes du processus. Sur un
   serveur centralisé à plusieurs utilisateurs, la première écriture concurrente (ajout de recette,
   `MakeCocktail`) peut corrompre la collection ou lever une exception. → `ConcurrentDictionary`
   (déjà importé mais inutilisé dans `CocktailRepository`) ou un verrou explicite.
-- **B3 — `Volume` compare valeur *et* unité.** `Volume(100, mL) == Volume(10, cL)` vaut `false` alors
+- **B3 — `Volume` compare valeur *et* unité.** ✅ **Corrigé**, mais **pas** par la normalisation en mL à
+  la construction initialement envisagée : elle aurait fait afficher « 700 mL » pour une saisie de
+  « 70 cL ». `Equals` / `GetHashCode` comparent désormais la valeur convertie en mL, arrondie au
+  millionième (arrondi plutôt que tolérance, pour garder une égalité transitive et un hash cohérent).
+  L'unité de saisie reste portée par l'instance. Constat d'origine : `Volume(100, mL) == Volume(10, cL)` vaut `false` alors
   que les deux volumes sont égaux. Les opérateurs `<` / `>` convertissent bien, mais pas l'égalité
-  générée par le `record`. Prévoir une normalisation en mL à la construction.
+  générée par le `record`.
 - **B4 — CORS `AllowAnyOrigin` + aucune auth côté back.** Acceptable en développement local,
   à restreindre dès que l'API est exposée hors de la machine.
 - **B5 — Les controllers renvoient des types nus** (`Cocktail`, `bool`) : pas de 404, pas de 400,
-  pas de message d'erreur exploitable côté front.
+  pas de message d'erreur exploitable côté front. 🟡 **Partiellement corrigé** : `DomainExceptionHandler`
+  produit des `ProblemDetails` (404 vérifié sur `GET /api/cocktails/{id}` inconnu), et `BarsController`
+  renvoie des DTOs. **Reste** : `CocktailsController` expose toujours les entités du domaine.
 - **B6 — Couverture de test partielle.** ✅ Résolu côté back : `Domain.Tests` existe et couvre `Bar`,
   `Cocktail`, `EtapeRecette`, `Volume` et `VolumeConverter` en xUnit. Restent non testées les couches
   `Application` (handlers MediatR) et `Web`, ainsi que **tout le front** : Karma/Jasmine est installé
@@ -352,27 +391,40 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
   implicites du SDK Web (`IServiceCollection` dans `DependencyInjection.cs`) — une couche applicative
   ne devrait pas connaître le web. Le nettoyage (`Microsoft.NET.Sdk` + retrait des attributs MVC des
   commandes/queries) est un chantier à part entière, volontairement hors du lot A.
-- **B9 — L'écran « Mon Bar » n'appelle jamais l'API.** `MyBarService.getMyStock()` renvoie un tableau
+- **B9 — L'écran « Mon Bar » n'appelle jamais l'API.** ✅ **Corrigé** : `MyBarService` passe par
+  `HttpClient` (`getMyBar`, `addIngredient`, `setNiveau`, `removeIngredient`), le mock et ses GUID
+  invalides ont disparu. Constat d'origine : `MyBarService.getMyStock()` renvoie un tableau
   `INGREDIENTS` codé en dur via `of()` : aucun `HttpClient`, aucun appel à `GET /api/bars`. Le front
   et le back affichent donc deux stocks différents et sans rapport (le seed de `BarRepository` compte
   14 entrées, celui du front une trentaine). Le tableau F3 du §1 (« lecture seule ») est optimiste :
   l'écran est intégralement déconnecté. Corollaire : les `id` du mock **ne sont pas des GUID valides**
   (`a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8` — `g`, `h`, `i`… ne sont pas hexadécimaux), ils lèveront à
   la première désérialisation côté back dès que l'écran sera branché.
-- **B10 — Aucun chemin d'écriture pour le bar.** `IBarRepository` n'expose que `GetBar()` : ni `Save`,
+- **B10 — Aucun chemin d'écriture pour le bar.** ✅ **Corrigé** : `IBarRepository.SaveAsync`, commandes
+  d'ajout / correction de niveau / retrait, et les endpoints correspondants (§4.1). Constat d'origine :
+  `IBarRepository` n'exposait que `GetBar()` : ni `Save`,
   ni `Update`. `MakeCocktailCommandHandler` porte un `// TODO: Update the bar in the repository` et
   ne « fonctionne » que parce qu'il mute en place l'instance `static DefaultBar` de `BarRepository`.
   Cet effet de bord disparaîtra au passage à une vraie persistance, et il n'existe par ailleurs
   aucune commande d'ajout / retrait / correction de stock — c'est-à-dire que F3 (« gérer Mon Bar »),
   fonctionnalité *Must*, n'a pas de back.
-- **B11 — `MakeCocktailCommand` ignore `Quantity`.** `CocktailBarOrder` porte bien un
+- **B11 — `MakeCocktailCommand` ignore `Quantity`.** ✅ **Corrigé** : `CommandeCocktail` porte la
+  quantité et `Bar.CanMakeAll` cumule les besoins. Constat d'origine : `CocktailBarOrder` porte bien un
   `int Quantity`, mais le handler appelle `bar.MakeCocktail(cocktail)` une seule fois par ligne de
   commande : commander 3 mojitos n'en décompte qu'un.
-- **B12 — `MakeCocktailCommand` consomme partiellement avant d'échouer.** Le handler boucle sur les
+- **B12 — `MakeCocktailCommand` consomme partiellement avant d'échouer.** ✅ **Corrigé** :
+  `Bar.MakeCocktails` valide la totalité de la commande avant la moindre consommation, et lève sinon
+  (traduit en 409 par `DomainExceptionHandler`). Constat d'origine : le handler bouclait sur les
   lignes en vérifiant `CanMake` puis en consommant *au fil de l'eau*. Si la 3ᵉ ligne est infaisable,
   les deux premières ont déjà été décomptées et la méthode renvoie `false` sans rien restaurer : le
   stock est faux et l'appelant croit que rien n'a eu lieu. → Valider l'intégralité de la commande
   (quantités comprises, cf. B11) avant toute consommation.
+- **B13 — L'intercepteur HTTP posait des en-têtes erronés.** ✅ **Corrigé.** `Access-Control-Allow-Origin`
+  était ajouté à chaque *requête* alors que c'est un en-tête de *réponse* (sans effet, sinon forcer un
+  préflight CORS), et `Content-Type: application/json` était posé même sur les `GET` / `DELETE` sans corps.
+- **B14 — Page de détail d'un cocktail illisible.** ❌ Ouvert. Le texte clair s'affiche sur un fond clair :
+  titre, description et ingrédients sont quasiment invisibles. Défaut de style, constaté pendant la
+  vérification du 13/09/2026, à traiter avec la migration OptimusUI (A3) ou juste avant.
 
 ---
 

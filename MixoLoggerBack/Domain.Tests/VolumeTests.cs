@@ -60,16 +60,63 @@ public class VolumeTests
 	}
 
 	// ------------------------------------------------------------------
-	// B3 — cf. docs/MVP.md §7
-	// `Volume` est un record : l'égalité générée compare Value ET Unit, sans
-	// conversion. Deux volumes physiquement identiques exprimés dans des unités
-	// différentes sont donc considérés comme distincts, alors que les opérateurs
-	// < et > convertissent correctement.
-	// Retirer le Skip une fois l'étape B‑2 faite (normalisation en mL à la construction).
+	// B3 — l'égalité compare désormais en millilitres, comme le font déjà
+	// les opérateurs < et > (cf. docs/MVP.md §7).
 	// ------------------------------------------------------------------
-	[Fact(Skip = "B3 — l'égalité de Volume ne convertit pas les unités (voir docs/MVP.md §7)")]
+
+	[Fact]
 	public void Egalite_MemeVolumeUnitesDifferentes_SontEgaux()
 	{
 		Assert.Equal(new Volume(100, UniteVolume.Mililitre), new Volume(10, UniteVolume.Centilitre));
+	}
+
+	[Fact]
+	public void Egalite_VolumesDifferents_NeSontPasEgaux()
+	{
+		Assert.NotEqual(new Volume(100, UniteVolume.Mililitre), new Volume(11, UniteVolume.Centilitre));
+	}
+
+	[Fact]
+	public void GetHashCode_MemeVolumeUnitesDifferentes_EstIdentique()
+	{
+		// Indispensable : sans ça, deux volumes égaux tomberaient dans des
+		// compartiments différents d'un Dictionary ou d'un HashSet.
+		Assert.Equal(
+			new Volume(1, UniteVolume.Litre).GetHashCode(),
+			new Volume(10, UniteVolume.Decilitre).GetHashCode());
+	}
+
+	[Fact]
+	public void Egalite_ToutesLesUnitesEquivalentes_SontEgales()
+	{
+		var litre = new Volume(1, UniteVolume.Litre);
+
+		Assert.Equal(litre, new Volume(10, UniteVolume.Decilitre));
+		Assert.Equal(litre, new Volume(100, UniteVolume.Centilitre));
+		Assert.Equal(litre, new Volume(1000, UniteVolume.Mililitre));
+	}
+
+	[Fact]
+	public void EnMillilitres_ConvertitDepuisChaqueUnite()
+	{
+		Assert.Equal(1000d, new Volume(1, UniteVolume.Litre).EnMillilitres, precision: 10);
+		Assert.Equal(1000d, new Volume(10, UniteVolume.Decilitre).EnMillilitres, precision: 10);
+		Assert.Equal(1000d, new Volume(100, UniteVolume.Centilitre).EnMillilitres, precision: 10);
+		Assert.Equal(1000d, new Volume(1000, UniteVolume.Mililitre).EnMillilitres, precision: 10);
+	}
+
+	[Fact]
+	public void Multiplication_ConserveLUnite()
+	{
+		var triple = new Volume(5, UniteVolume.Centilitre) * 3;
+
+		Assert.Equal(15d, triple.Value, precision: 10);
+		Assert.Equal(UniteVolume.Centilitre, triple.Unit);
+	}
+
+	[Fact]
+	public void Multiplication_FacteurNegatif_Leve()
+	{
+		Assert.Throws<ArgumentOutOfRangeException>(() => new Volume(5, UniteVolume.Centilitre) * -1);
 	}
 }

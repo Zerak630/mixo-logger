@@ -20,6 +20,25 @@ public record Volume : IValueObject
 		Unit = unit ?? throw new ArgumentNullException(nameof(unit), "Unit cannot be null.");
 	}
 
+	/// <summary>La même quantité exprimée en millilitres — la base de comparaison.</summary>
+	[JsonIgnore]
+	public double EnMillilitres => VolumeConverter.Convert(Value, Unit, UniteVolume.Mililitre);
+
+	// B3 — l'égalité générée par le record comparait Value ET Unit sans conversion,
+	// alors que < et > convertissaient : 100 mL et 10 cL étaient jugés différents.
+	// On compare donc en millilitres. L'unité de saisie reste portée par l'instance
+	// (« 70 cL » continue de s'afficher « 70 cL ») : elle est un détail de présentation,
+	// pas une composante de l'identité du volume.
+	public virtual bool Equals(Volume? other) => other is not null && Arrondi == other.Arrondi;
+
+	public override int GetHashCode() => Arrondi.GetHashCode();
+
+	// On compare des valeurs arrondies plutôt qu'avec une tolérance : une égalité « à
+	// epsilon près » ne serait pas transitive et ne pourrait pas fournir de GetHashCode
+	// cohérent — deux volumes égaux doivent avoir le même hash pour servir de clé.
+	private double Arrondi => Math.Round(EnMillilitres, Precision);
+	private const int Precision = 6;
+
 	public static Volume operator +(Volume a, Volume b)
 	{
 		return a.Unit == b.Unit
@@ -38,6 +57,15 @@ public record Volume : IValueObject
 				VolumeConverter.Convert(a, UniteVolume.Mililitre).Value - VolumeConverter.Convert(b, UniteVolume.Mililitre).Value,
 				UniteVolume.Mililitre
 			);
+	}
+
+	/// <summary>Multiplie un volume par un nombre de portions (commande de N cocktails).</summary>
+	public static Volume operator *(Volume volume, int facteur)
+	{
+		if (facteur < 0)
+			throw new ArgumentOutOfRangeException(nameof(facteur), "Le facteur doit être positif ou nul.");
+
+		return new Volume(volume.Value * facteur, volume.Unit);
 	}
 
 	public static bool operator <(Volume a, Volume b)

@@ -10,11 +10,11 @@ public class CocktailRepository : ICocktailRepository
 	private static readonly List<Cocktail> DEFAULT_COCKTAILS = [
 		new Cocktail("Mojito",
 		[
-			new(new Ingredient("Rhum"), 50, UniteVolume.Mililitre),
-			new(new Ingredient("Menthe"), 10, UniteVolume.Mililitre),
-			new(new Ingredient("Citron vert"), 20, UniteVolume.Mililitre),
-			new(new Ingredient("Sucre"), 15, UniteVolume.Mililitre),
-			new(new Ingredient("Eau gazeuse"), 100, UniteVolume.Mililitre)
+			new(IngredientReferentiel.Resolve("Rhum"), 50, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Menthe"), 10, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Citron vert"), 20, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Sucre"), 15, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Eau gazeuse"), 100, UniteVolume.Mililitre)
 		],
 			EtapeRecette.FromOrderedList([
 				"Mixer la menthe et le sucre",
@@ -25,10 +25,10 @@ public class CocktailRepository : ICocktailRepository
 			"Un cocktail rafraîchissant à base de rhum et de menthe."),
 		new Cocktail("Piña Colada",
 		[
-			new(new Ingredient("Rhum blanc"), 50, UniteVolume.Mililitre),
-			new(new Ingredient("Jus d'ananas"), 90, UniteVolume.Mililitre),
-			new(new Ingredient("Crème de coco"), 30, UniteVolume.Mililitre),
-			new(new Ingredient("Glace pilée"), 100, UniteVolume.Mililitre)
+			new(IngredientReferentiel.Resolve("Rhum blanc"), 50, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Jus d'ananas"), 90, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Crème de coco"), 30, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Glace pilée"), 100, UniteVolume.Mililitre)
 		],
 			EtapeRecette.FromOrderedList([
 				"Verser tous les ingrédients dans un shaker avec de la glace.",
@@ -39,10 +39,10 @@ public class CocktailRepository : ICocktailRepository
 		),
 		new Cocktail("Cosmopolitan",
 		[
-			new(new Ingredient("Vodka"), 40, UniteVolume.Mililitre),
-			new(new Ingredient("Triple sec"), 15, UniteVolume.Mililitre),
-			new(new Ingredient("Jus de cranberry"), 30, UniteVolume.Mililitre),
-			new(new Ingredient("Jus de citron vert"), 10, UniteVolume.Mililitre)
+			new(IngredientReferentiel.Resolve("Vodka"), 40, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Triple sec"), 15, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Jus de cranberry"), 30, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Jus de citron vert"), 10, UniteVolume.Mililitre)
 		],
 			EtapeRecette.FromOrderedList([
 				"Verser tous les ingrédients dans un shaker avec de la glace.",
@@ -53,9 +53,9 @@ public class CocktailRepository : ICocktailRepository
 		),
 		new Cocktail("Tequila Sunrise",
 		[
-			new(new Ingredient("Tequila"), 40, UniteVolume.Mililitre),
-			new(new Ingredient("Jus d'orange"), 80, UniteVolume.Mililitre),
-			new(new Ingredient("Sirop de grenadine"), 10, UniteVolume.Mililitre)
+			new(IngredientReferentiel.Resolve("Tequila"), 40, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Jus d'orange"), 80, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Sirop de grenadine"), 10, UniteVolume.Mililitre)
 		],
 			EtapeRecette.FromOrderedList([
 				"Verser la tequila et le jus d'orange dans un verre rempli de glace.",
@@ -66,11 +66,11 @@ public class CocktailRepository : ICocktailRepository
 		),
 		new Cocktail("Bloody Mary",
 		[
-			new(new Ingredient("Vodka"), 45, UniteVolume.Mililitre),
-			new(new Ingredient("Jus de tomate"), 90, UniteVolume.Mililitre),
-			new(new Ingredient("Jus de citron"), 15, UniteVolume.Mililitre),
-			new(new Ingredient("Sauce Worcestershire"), 2, UniteVolume.Mililitre),
-			new(new Ingredient("Tabasco"), 1, UniteVolume.Mililitre)
+			new(IngredientReferentiel.Resolve("Vodka"), 45, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Jus de tomate"), 90, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Jus de citron"), 15, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Sauce Worcestershire"), 2, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Tabasco"), 1, UniteVolume.Mililitre)
 		],
 			EtapeRecette.FromOrderedList([
 				"Verser tous les ingrédients dans un verre avec de la glace.",

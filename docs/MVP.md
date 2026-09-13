@@ -32,7 +32,7 @@
 |---|----------------|----------|------|
 | F1 | Consulter la liste des cocktails | Must | ✅ Fait (données en mémoire) — branché sur l'API le 13/09/2026 : l'écran affichait jusque-là une liste codée en dur |
 | F2 | Consulter le détail d'un cocktail (ingrédients + étapes) | Must | ✅ Fait |
-| F3 | Gérer « Mon Bar » (stock d'ingrédients) | Must | 🟡 API complète (ajout / niveau / retrait) ; écran encore en lecture seule |
+| F3 | Gérer « Mon Bar » (stock d'ingrédients) | Must | ✅ Écran complet : ajout avec autocomplétion, niveau par ligne, retrait, volume exact optionnel |
 | F4 | Savoir quels cocktails sont réalisables avec le stock | Must | 🟡 `CanMake` fonctionne enfin (B1 corrigé) ; pas encore exposé ni affiché |
 | F5 | Ajouter / éditer une recette | Must | ❌ `CreateCocktailCommand` existe, pas d'endpoint ni d'écran |
 | F6 | Se connecter | Must | 🟡 Mock front uniquement (utilisateur en dur) |
@@ -210,6 +210,7 @@ Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
 | `GET` | `/api/cocktails` | — | `Cocktail[]` | ⚠️ renvoie l'entité de domaine, pas un DTO |
 | `GET` | `/api/cocktails/{id}` | — | `Cocktail` | ⚠️ pas de 404 si absent |
 | `GET` | `/api/bars` | — | `MyBarDto` | Bar unique global |
+| `GET` | `/api/ingredients` | — | `IngredientReferenceDto[]` | Référentiel trié par nom, alias normalisés inclus — alimente l'autocomplétion |
 | `POST` | `/api/bars/MakeCocktails` | `CocktailBarOrder[]` | `MyBarDto` | Tout ou rien ; `409` si infaisable |
 | `POST` | `/api/bars/ingredients` | `{ name, niveau?, quantity? }` | `MyBarDto` | `quantity` facultatif = possession simple ; `name` accepte un alias |
 | `PATCH` | `/api/bars/ingredients/{name}` | `{ niveau }` | `MyBarDto` | `Pleine` \| `Entamee` \| `PresqueFinie` |
@@ -229,7 +230,6 @@ des autres controllers reste à faire (B5).
 |-------|-------|-------|
 | `POST` | `/api/cocktails` | Créer une recette (`CreateCocktailCommand` existe déjà, non exposé) |
 | `PUT` / `DELETE` | `/api/cocktails/{id}` | Éditer / supprimer |
-| `GET` | `/api/ingredients` | Exposer le référentiel (autocomplétion à la saisie du stock) |
 | `GET` | `/api/cocktails?makeable=true` | Filtrer sur le stock |
 | `POST` | `/api/cocktails/{id}/ratings` | Noter |
 | `POST` | `/api/auth/login` | S'authentifier |
@@ -281,12 +281,27 @@ accents et garder `#F5F5F5` pour le texte.
 | Écran | Route | État |
 |-------|-------|------|
 | Liste des cocktails | `/cocktails` | ✅ |
-| Détail d'un cocktail | `/cocktails/:id` | ✅ |
-| Mon Bar | `/my_bar` | ✅ |
+| Détail d'un cocktail | `/cocktails/:id` | 🟡 fonctionnel, mais illisible (B14) |
+| Mon Bar | `/my_bar` | ✅ gestion complète du stock (F3) |
 | Ajout / édition de recette | `/cocktails/new` | ❌ |
 | Connexion | modale | 🟡 mock |
 
 Composants clés : `cocktail-card` (image, nom, note), `login-modal`.
+
+**Écran Mon Bar (F3)** — comportements retenus :
+
+- **Ajout** : autocomplétion sur le référentiel (`GET /api/ingredients`), recherche insensible aux
+  accents et à la casse, sur le nom *et* les alias (« scotch » propose Whisky) ; les ingrédients
+  déjà présents ne sont pas reproposés. Une saisie libre inconnue est acceptée et crée l'ingrédient.
+  Le niveau vaut « Pleine » par défaut ; le volume exact n'apparaît que si l'utilisateur active
+  « Suivre le volume exact ».
+- **Niveau** : modifiable directement sur chaque ligne.
+- **Retrait** : immédiat en possession simple (rajouter ne coûte rien) ; **confirmation** si la ligne
+  suit un volume, qui serait perdu.
+- **État périmé** : un 409 (bar modifié entre-temps) ou un 404 (ligne déjà retirée ailleurs) recharge
+  le bar et l'explique par un toast, au lieu de laisser agir sur des données fausses.
+- La normalisation des noms existe en deux exemplaires (`IngredientName.Normalize` côté API,
+  `normaliserNom` côté front) : **les garder alignés**, sinon la recherche ne retrouve plus les alias.
 
 Structure d'un écran de liste :
 

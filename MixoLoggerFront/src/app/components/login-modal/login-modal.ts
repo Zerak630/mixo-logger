@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from "@angular/core";
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from "@angular/core";
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
 import { Button } from "@openng/optimus-ui/button";
 import { DialogModule } from "@openng/optimus-ui/dialog";
@@ -12,6 +12,7 @@ import { IconField } from "@openng/optimus-ui/iconfield";
 	selector: 'login-modal',
 	templateUrl: './login-modal.html',
 	styleUrl: './login-modal.scss',
+	changeDetection: ChangeDetectionStrategy.Eager,
 	imports: [
 		DialogModule,
 		ReactiveFormsModule,

@@ -1,5 +1,5 @@
 
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { CocktailCardComponent } from "../../../components/cocktail-card/cocktail-card.component";
 import { Cocktail } from '../../../models/cocktail';
 
@@ -7,6 +7,7 @@ import { Cocktail } from '../../../models/cocktail';
   selector: 'cocktail-list',
   templateUrl: './cocktail-list.component.html',
   styleUrls: ['./cocktail-list.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [CocktailCardComponent]
 })
 export default class CocktailListComponent {

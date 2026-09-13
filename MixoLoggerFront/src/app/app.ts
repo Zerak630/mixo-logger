@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { MenuItem, MessageService } from '@openng/optimus-ui/api';
 import { Avatar } from '@openng/optimus-ui/avatar';
@@ -22,6 +22,7 @@ import { ToastModule } from '@openng/optimus-ui/toast';
 		MessageService
 	],
 	templateUrl: './app.html',
+	changeDetection: ChangeDetectionStrategy.Eager,
 	styleUrl: './app.scss'
 })
 export class App {

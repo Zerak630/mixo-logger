@@ -3,7 +3,7 @@
 > Bibliothèque de cocktails pour mixologues et amateurs de soirées.
 > Document de référence : périmètre, stack, modèle de données, contrat d'API, décisions ouvertes.
 >
-> Dernière mise à jour : 2026-08-29
+> Dernière mise à jour : 2026-09-13
 
 ---
 
@@ -57,8 +57,8 @@
 
 | Composant | Cible | État du dépôt |
 |-----------|-------|---------------|
-| Frontend | **Angular 22** (standalone, signals, zoneless) | 🟡 Angular 21 — A2 à mi-chemin |
-| Composants UI | **OptimusUI** (`@openng/optimus-ui` 2.x, MIT) | 🔺 PrimeNG 20 — à migrer ; **hors support avec Angular 21** |
+| Frontend | **Angular 22** (standalone, signals, zoneless) | ✅ Angular 22.1, TypeScript 6.0 (A2) |
+| Composants UI | **OptimusUI** (`@openng/optimus-ui` 2.x, MIT) | ✅ OptimusUI 2.0.2 + `@openng/icons` (A3) |
 | CSS | Écrit à la main par l'auteur ; OptimusUI réservé aux composants complexes | — |
 | Backend | **.NET 11** (préversion jusqu'au 10/11/2026) | ✅ `net11.0`, SDK épinglé par `global.json` (A1) |
 | Médiateur | **MediatR 13** (CQRS : Commands / Queries) | ✅ En place |
@@ -73,7 +73,10 @@
   (le formulaire de recette F5 en est le cas d'usage type), **zoneless** par défaut, et **Angular
   Aria** pour les primitives accessibles. Le front est déjà en signals (`toggle-signal`,
   `UserService`) et déjà zoneless (`provideZonelessChangeDetection()` dans `app.config.ts`, qui
-  devient redondant en v22) : la marche est courte.
+  devient redondant en v22) : la marche est courte. Les migrations automatiques de la v22 ont
+  volontairement conservé le comportement antérieur : `ChangeDetectionStrategy.Eager` sur 5
+  composants et `withXhr()` sur `provideHttpClient`. Passer à `OnPush` et au backend `fetch` est un
+  choix à faire composant par composant, pas une obligation.
 - **OptimusUI** — fork communautaire MIT de PrimeNG v21, créé après le passage de PrimeNG v22 sous
   licence commerciale (juin 2026). **API-compatible avec PrimeNG v21**, mêmes presets de thème
   (Aura, Material, Lara, Nora) via `@openng/optimus-ui-themes`. Les `peerDependencies` de la 2.0.2
@@ -449,24 +452,25 @@ Branche : `chore/lot-a-stack-upgrade`.
 
 | Étape | Contenu | État |
 |-------|---------|------|
-| **A0** | Installer le SDK .NET 11 preview et Node.js — **aucun des deux n'est présent sur la machine** (§10.1) | ❌ **Bloquant pour A2 à A5** |
-| **A1** | `global.json` épinglant le SDK .NET 11 preview + passage des 4 `.csproj` en `net11.0` | ✅ Fait (non compilé) |
-| **A2** | Montée Angular 20 → 21 → 22 (`ng update`, une majeure à la fois) | ⛔ Bloqué par A0 |
-| **A3** | PrimeNG 20 → 21, puis migration vers OptimusUI (schematic, cf. §10.3) | ⛔ Bloqué par A0 |
-| **A4** | Projet de tests back (`Domain.Tests`) + premiers tests | ✅ Écrit (non compilé, non exécuté) |
-| **A5** | Vérification de bout en bout : API + front qui démarrent, écrans OK | ⛔ Bloqué par A0 |
+| **A0** | Installer le SDK .NET 11 preview et Node.js | ✅ Fait (cf. §10.1 pour le `PATH`) |
+| **A1** | `global.json` épinglant le SDK .NET 11 preview + passage des 4 `.csproj` en `net11.0` | ✅ Fait, compile sans avertissement |
+| **A2** | Montée Angular 20 → 21 → 22 | ✅ Fait — Angular 22.1 |
+| **A3** | PrimeNG 20 → 21 → OptimusUI 1.x → OptimusUI 2.x | ✅ Fait — procédure réelle en §10.3 |
+| **A4** | Projet de tests back (`Domain.Tests`) + premiers tests | ✅ Fait — 79 tests, aucun *skip* |
+| **A5** | Vérification de bout en bout : API + front qui démarrent, écrans OK | ✅ Fait le 13/09/2026, cf. §10.4 |
 
-> ⚠️ A1 et A4 ont été écrits **sans SDK disponible** : aucun `dotnet build`, aucun `dotnet test`,
-> aucun `npm install` n'a pu être lancé. Tout est donc à valider au premier build (§10.4).
+**Lot A terminé.**
 
 ### Lot B — Corrections bloquantes
 
-| Étape | Contenu | Lève |
-|-------|---------|------|
-| **B‑1** | Égalité d'`Ingredient` (nom normalisé) + tests `CanMake` / `MakeCocktail` | B1 — la fonctionnalité cœur est morte aujourd'hui |
-| **B‑2** | Normalisation de `Volume` en mL à la construction | B3 |
-| **B‑3** | Repositories thread-safe (`ConcurrentDictionary`) | B2 — serveur partagé |
-| **B‑4** | DTOs + `ActionResult<T>` + `ProblemDetails` | B5 |
+Branche : `feat/mon-bar`, rebasée sur le lot A.
+
+| Étape | Contenu | Lève | État |
+|-------|---------|------|------|
+| **B‑1** | Égalité d'`Ingredient` (nom normalisé) + référentiel d'alias | B1 | ✅ |
+| **B‑2** | Égalité de `Volume` en mL — *pas* par normalisation à la construction, cf. §7 | B3 | ✅ |
+| **B‑3** | Copie du bar par requête + contrôle de concurrence optimiste | B2 | ✅ |
+| **B‑4** | DTOs + `ActionResult<T>` + `ProblemDetails` | B5 | 🟡 `ProblemDetails` et DTOs du bar faits ; `CocktailsController` expose encore les entités |
 
 ### Lot C — Multi-utilisateur (après §6.1)
 
@@ -486,18 +490,23 @@ Persistance (PostgreSQL + EF Core), Docker, déploiement sur le serveur centrali
 
 ## 10. Environnement de développement
 
-### 10.1 Prérequis — ⚠️ rien n'est installé
+### 10.1 Prérequis
 
-Au 29/08/2026, la machine de développement ne contient **ni SDK .NET, ni Node.js** :
-`C:\Program Files\dotnet` et `C:\Program Files\nodejs` n'existent pas, et le dépôt n'a jamais été
-restauré (pas de `node_modules/`, pas de `obj/`). Aucune commande `dotnet` / `npm` / `ng` n'est donc
-exécutable en l'état.
+| Outil | Version | Installé |
+|-------|---------|----------|
+| SDK .NET | `11.0.100-preview.7.26381.103` | ✅ `C:\Program Files\dotnet` |
+| Node.js | 24.20.0 (npm 11.19) | ✅ via **nvm-windows** |
+| Angular CLI | 22.1 | Local au projet — `npx ng`, pas d'installation globale nécessaire |
 
-| Outil | Version attendue | Où |
-|-------|------------------|-----|
-| SDK .NET | `11.0.100-preview.7.26381.103` | <https://dotnet.microsoft.com/download/dotnet/11.0> |
-| Node.js | LTS supportée par Angular 22 | <https://nodejs.org/> |
-| Angular CLI | 22.x | `npm install -g @angular/cli@22` |
+> ⚠️ **Aucun des deux n'est dans le `PATH` de tous les terminaux.** `dotnet` est absent du `PATH` de
+> Git Bash, et Node n'est accessible que via le dossier de version nvm
+> (`%LOCALAPPDATA%\nvm\v24.20.0`). Symptôme typique : `npm start` échoue avec « "node" n'est pas
+> reconnu » alors que `npm` lui-même a été trouvé. Corriger le `PATH` utilisateur (ou relancer
+> `nvm use 24.20.0` dans un terminal administrateur) évite de préfixer chaque commande.
+
+> ⚠️ **npm 11 bloque les scripts d'installation** de `esbuild`, `lmdb`, `@parcel/watcher` et
+> `msgpackr-extract` (« install scripts not yet covered by allowScripts »). Le build fonctionne sans
+> eux ; les autoriser relève d'une décision explicite (`npm install-scripts approve <paquet>`).
 
 Le SDK est épinglé à la racine du dépôt par `global.json`, pour que les préversions successives ne
 changent pas le comportement sans prévenir :
@@ -526,7 +535,7 @@ dotnet run --project MixoLoggerBack/Web
 Frontend — `http://localhost:4200` :
 
 ```bash
-cd MixoLoggerFront && npm install && npm start
+cd MixoLoggerFront && npm ci && npm start
 ```
 
 L'URL de l'API consommée par le front se configure dans `MixoLoggerFront/src/env/env.local.json`
@@ -534,70 +543,82 @@ L'URL de l'API consommée par le front se configure dans `MixoLoggerFront/src/en
 
 ### 10.3 Migration PrimeNG → OptimusUI
 
-L'ordre compte : OptimusUI est API-compatible avec **PrimeNG v21**, pas avec la v20 installée.
+✅ **Réalisée le 13/09/2026** (commits `3fb49e2`, `3180b66`, `e76f441`). La procédure envisagée
+initialement était fausse ; voici celle qui a réellement fonctionné, et pourquoi.
+
+**Le piège** : dans le paquet `@openng/optimus-ui@2.x`, le schematic `migrate-from-primeng` est
+marqué *« Deprecated on this line, maintained only on release/1.x »*, et `ng add` y est réservé aux
+projets **non** PrimeNG. Or OptimusUI 1.x exige Angular **21** et OptimusUI 2.x exige Angular
+**22.1**. D'où un ordre imposé, à lire dans le paquet lui-même avant de lancer quoi que ce soit
+(`npm pack @openng/optimus-ui@<version>` puis `schematics/collection.json`) :
 
 ```bash
-cd MixoLoggerFront
-ng update @angular/core@21 @angular/cli@21
-ng update primeng@21
-ng update @angular/core@22 @angular/cli@22
-ng add @openng/optimus-ui
-```
-
-Le schematic `ng add` installe les paquets, choisit un preset de thème et câble `provideOptimus`.
-Pour une base déjà en PrimeNG, un schematic dédié réécrit les imports et renomme l'API de config :
-
-```bash
-ng generate @openng/optimus-ui:migrate-from-primeng
-```
-
-> ⚠️ La documentation publique cite ce schematic sous la forme `@openng/optimus-ui@1:migrate-from-primeng`
-> (paquet en v1) alors que la version courante est la 2.0.2. Vérifier le nom exact avant de lancer,
-> et faire la migration sur une branche dédiée.
-
-Points de contrôle après migration :
-
-- `src/app/styles/customTheme.ts` : `definePreset` / `Aura` importés depuis
-  `@openng/optimus-ui-themes` au lieu de `@primeuix/themes`.
-- `src/app/app.config.ts` : `providePrimeNG` → `provideOptimus`.
-- `primeicons` : vérifier si le paquet reste utilisé tel quel ou s'il a un équivalent `@openng`.
-
-### 10.4 Première validation, une fois le SDK installé
-
-Le lot A a été écrit sans compilateur ni runtime. À vérifier dans cet ordre, la première commande
-qui échoue indiquant quoi corriger :
-
-```bash
-dotnet --list-sdks
+npx ng update primeng@21
 ```
 
 ```bash
-dotnet restore MixoLoggerBack/mixo-logger.slnx
-```
-
-Points de rupture probables, par ordre de vraisemblance :
-
-1. **`Microsoft.AspNetCore.OpenApi` en `11.0.0-preview.7.26381.103`** — la version a été alignée sur
-   celle du runtime de la preview 7. Si le restore échoue en NU1102, remplacer par la version
-   effectivement publiée pour la preview installée.
-2. **Les paquets de test en version flottante `*`** (`Domain.Tests.csproj`). Le plus simple est de
-   régénérer le csproj aux versions du jour :
-   `dotnet new xunit -n Domain.Tests -o MixoLoggerBack/Domain.Tests --force`, puis remettre le
-   `<ProjectReference Include="..\Domain\Domain.csproj" />`.
-3. **`<OutputType>Exe</OutputType>` dans `Domain.Tests`** — requis par xUnit v3, à retirer si le
-   template installé est xUnit v2.
-
-```bash
-dotnet build MixoLoggerBack/mixo-logger.slnx
+npm install @angular/cdk@~21.2.0
 ```
 
 ```bash
-dotnet test MixoLoggerBack/Domain.Tests
+npm install @openng/optimus-ui@1.0.2
 ```
 
-Résultat attendu : **suite verte**, avec 3 tests marqués *skipped* — deux pour B1 (`BarTests`) et un
-pour B3 (`VolumeTests`). Ces skips sont volontaires : ils décrivent le comportement correct et
-servent de critère d'acceptation aux étapes B‑1 et B‑2. Un test qui échoue au lieu d'être skippé
-signale une erreur d'écriture des tests, pas une régression du domaine.
+```bash
+npx ng generate @openng/optimus-ui:migrate-from-primeng --skip-install
+```
 
-Puis le front (§10.3), et enfin les deux serveurs en parallèle (§10.2).
+```bash
+npm install
+```
+
+```bash
+npx ng update @angular/core@22 @angular/cli@22 @angular/cdk@22 @openng/optimus-ui@2
+```
+
+La dernière commande doit rester **une seule passe** : Angular 22 et OptimusUI 2 ne sont
+installables qu'ensemble.
+
+Ce qu'il a fallu corriger à la main :
+
+- **`provideAnimationsAsync()` cassait le build** dès PrimeNG 21 (« Could not resolve
+  `@angular/animations/browser` ») : PrimeNG 21 — et OptimusUI après lui — anime via son propre
+  paquet *motion* et n'installe plus `@angular/animations`. L'application n'utilisant aucune
+  animation Angular, le provider a été retiré.
+- **`@angular/cdk`** n'était pas installé alors que PrimeNG 21 l'exige en *peer dependency*.
+
+Ce que le schematic a fait seul, et qui s'est vérifié juste :
+
+- `primeng`, `primeicons`, `@primeuix/themes` → `@openng/optimus-ui`, `@openng/icons`,
+  `@openng/optimus-ui-themes` ; imports réécrits ; `providePrimeNG` → `provideOptimus`.
+- **`@openng/icons` conserve le préfixe `pi`** : les 5 icônes utilisées (`pi-star`, `pi-share-alt`,
+  `pi-check`, `pi-eye`, `pi-eye-slash`) existent, aucun template n'a été modifié.
+
+OptimusUI 2 ne fournit **aucune** migration depuis la 1.x (`migrations.json` vide) : la seule
+vérification valable est à l'exécution (§10.4).
+
+**Reste signalé** : `app.html` affiche un avatar de démonstration chargé depuis le CDN de
+PrimeFaces (`primefaces.org/cdn/primeng/images/demo/...`). Préexistant, mais fragile et sans rapport
+avec l'application.
+
+### 10.4 Validation de bout en bout (A5)
+
+✅ **Réalisée le 13/09/2026** sur `feat/mon-bar` rebasée sur le lot A.
+
+| Contrôle | Résultat |
+|----------|----------|
+| `dotnet build` | ✅ 0 avertissement |
+| `dotnet test` | ✅ 79 réussis, 0 échec, 0 *skip* |
+| `npm ci` + `ng build` | ✅ |
+| API et front démarrés ensemble | ✅ `:5213` et `:4200` |
+| Liste des cocktails | ✅ Données du serveur (`GET /api/Cocktails`) |
+| Détail → « Faire ce cocktail » × 3 verres | ✅ Rhum 700 → 550 mL (3 × 50 mL) |
+| Écran Mon Bar | ✅ Reflète le stock serveur, niveaux et volumes |
+| Commande impossible (Bloody Mary) | ✅ 409, message de l'API affiché, stock intact |
+| Dialogue et formulaire de connexion (OptimusUI 2) | ✅ Saisie et soumission fonctionnelles |
+| Console navigateur | ✅ Aucune erreur hormis le 409 attendu |
+| Concurrence (40 ajouts simultanés, curl) | ✅ Chaque 200 correspond à une ligne enregistrée ; les autres reçoivent un 409 |
+
+Anomalies connues, non bloquantes pour A5 : **B14** (page de détail illisible, texte clair sur fond
+clair) et 15 vulnérabilités npm, **toutes dans l'outillage de développement** (Karma, serveur de
+dev) — `npm audit --omit=dev` n'en trouve aucune.

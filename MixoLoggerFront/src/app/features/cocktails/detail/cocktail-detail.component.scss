@@ -1,10 +1,85 @@
-/* Styles pour le détail du cocktail */
-div {
-  padding: 16px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: #fafafa;
+// B14 — l'ancien style imposait un fond clair (#fafafa) alors que le texte héritait du
+// thème sombre : la page était quasiment illisible. Palette commune : src/styles.scss.
+
+.detail {
+  max-width: 40rem;
+  margin: 1.5rem auto 3rem;
+  padding: 1.5rem;
+  color: var(--mixo-texte);
+  background: var(--mixo-surface);
+  border: 1px solid var(--mixo-bordure);
+  border-radius: 12px;
+
+  &__surtitre {
+    margin: 0 0 0.25rem;
+    font-size: 0.875rem;
+    color: var(--mixo-texte-secondaire);
+  }
+
+  &__nom {
+    margin: 0;
+    font-family: "Poppins", sans-serif;
+    font-weight: 700;
+    font-size: 1.75rem;
+  }
+
+  &__description {
+    margin: 0.75rem 0 0;
+    color: var(--mixo-texte-secondaire);
+  }
+
+  &__bloc {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--mixo-bordure);
+  }
+
+  &__intertitre {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  > p-button {
+    display: block;
+    margin-top: 1.5rem;
+  }
 }
-h3 {
-  margin-top: 0;
+
+.verres {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  &__nombre {
+    min-width: 2ch;
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.ingredients {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  &__ligne {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--mixo-bordure);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  &__dose {
+    color: var(--mixo-texte-secondaire);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
 }

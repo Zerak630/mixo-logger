@@ -31,7 +31,7 @@
 | # | Fonctionnalité | Priorité | État |
 |---|----------------|----------|------|
 | F1 | Consulter la liste des cocktails | Must | ✅ Fait (données en mémoire) — branché sur l'API le 13/09/2026 : l'écran affichait jusque-là une liste codée en dur |
-| F2 | Consulter le détail d'un cocktail (ingrédients + étapes) | Must | ✅ Fait |
+| F2 | Consulter le détail d'un cocktail (ingrédients + étapes) | Must | 🟡 Ingrédients affichés ; **étapes non affichées** — l'API les renvoie (`etapeRecettes`), le modèle front `CocktailDetail` ne les déclare pas |
 | F3 | Gérer « Mon Bar » (stock d'ingrédients) | Must | ✅ Écran complet : ajout avec autocomplétion, niveau par ligne, retrait, volume exact optionnel |
 | F4 | Savoir quels cocktails sont réalisables avec le stock | Must | 🟡 `CanMake` fonctionne enfin (B1 corrigé) ; pas encore exposé ni affiché |
 | F5 | Ajouter / éditer une recette | Must | ❌ `CreateCocktailCommand` existe, pas d'endpoint ni d'écran |
@@ -261,6 +261,13 @@ palette `primary` d'Aura avec `{purple.*}`. Ces hex ne sont donc pas appliqués 
 aujourd'hui. Après la migration vers OptimusUI, le même fichier devient un `definePreset` importé
 de `@openng/optimus-ui-themes` — l'API est identique à celle de PrimeNG v21.
 
+**Thème sombre forcé** (depuis B14) : `darkModeSelector: '.app-dark'` dans `app.config.ts`, classe
+`app-dark` posée sur `<html>`. L'application ne suit **pas** le réglage clair/sombre du poste. Pour
+les styles écrits à la main, utiliser les variables `--mixo-fond`, `--mixo-surface`, `--mixo-accent`,
+`--mixo-texte`, `--mixo-texte-secondaire`, `--mixo-bordure`, `--mixo-erreur` de `src/styles.scss`,
+jamais de couleurs en dur. Pour vérifier un écran, le tester aussi avec le poste en mode clair : c'est
+ce qui a révélé le défaut.
+
 **Répartition assumée** : OptimusUI fournit les **composants complexes** (tables, overlays, dialogs,
 selects, formulaires riches, toasts). Tout le reste — layout, cartes cocktail, typographie, palette —
 est écrit en CSS/SCSS à la main. Concrètement : les composants maison (`cocktail-card`, grilles,
@@ -281,7 +288,7 @@ accents et garder `#F5F5F5` pour le texte.
 | Écran | Route | État |
 |-------|-------|------|
 | Liste des cocktails | `/cocktails` | ✅ |
-| Détail d'un cocktail | `/cocktails/:id` | 🟡 fonctionnel, mais illisible (B14) |
+| Détail d'un cocktail | `/cocktails/:id` | 🟡 lisible (B14 corrigé) ; **les étapes ne sont pas affichées** (cf. F2) |
 | Mon Bar | `/my_bar` | ✅ gestion complète du stock (F3) |
 | Ajout / édition de recette | `/cocktails/new` | ❌ |
 | Connexion | modale | 🟡 mock |
@@ -440,9 +447,17 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
 - **B13 — L'intercepteur HTTP posait des en-têtes erronés.** ✅ **Corrigé.** `Access-Control-Allow-Origin`
   était ajouté à chaque *requête* alors que c'est un en-tête de *réponse* (sans effet, sinon forcer un
   préflight CORS), et `Content-Type: application/json` était posé même sur les `GET` / `DELETE` sans corps.
-- **B14 — Page de détail d'un cocktail illisible.** ❌ Ouvert. Le texte clair s'affiche sur un fond clair :
-  titre, description et ingrédients sont quasiment invisibles. Défaut de style, constaté pendant la
-  vérification du 13/09/2026, à traiter avec la migration OptimusUI (A3) ou juste avant.
+- **B14 — Page de détail d'un cocktail illisible.** ✅ **Corrigé.** Symptôme : texte clair sur fond clair.
+  **Cause réelle, plus large que cette page** : l'application n'était sombre *que si le poste était en
+  mode sombre*. Le thème OptimusUI suivait `prefers-color-scheme` (`darkModeSelector: 'system'` par
+  défaut) et aucun fond de page n'était défini. La page de détail imposait un fond clair (`#fafafa`) à un
+  texte hérité du thème sombre ; et, à l'inverse, **l'écran Mon Bar (F3) devenait illisible sur un poste
+  en mode clair** (texte `#F5F5F5` sur canevas blanc) — régression vérifiée en simulant le mode clair.
+  Correctif : thème sombre forcé (`darkModeSelector: '.app-dark'`, classe posée sur `<html>`), fond et
+  couleur de page explicites, palette du §5.1 centralisée en variables CSS `--mixo-*` dans
+  `src/styles.scss`, page de détail restylée. Vérifié dans les deux modes système : liste, détail, Mon Bar.
+  Au passage : `lang="fr"` sur `<html>` (il valait `en`, les lecteurs d'écran prononçaient le français
+  à l'anglaise) et libellés accessibles sur les boutons « − » / « + » du nombre de verres.
 
 ---
 

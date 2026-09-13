@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { Button } from '@openng/optimus-ui/button';
 import { CocktailDetail } from '../../../models/cocktail';
 import { CocktailsService } from '../cocktails.service';
 
@@ -7,6 +8,7 @@ import { CocktailsService } from '../cocktails.service';
   selector: 'cocktail-detail',
   templateUrl: './cocktail-detail.component.html',
   styleUrls: ['./cocktail-detail.component.scss'],
+  imports: [Button],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export default class CocktailDetailComponent {

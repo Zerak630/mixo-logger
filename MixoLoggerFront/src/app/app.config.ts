@@ -19,6 +19,11 @@ export const appConfig: ApplicationConfig = {
       theme: {
         preset: MyPreset,
         options: {
+          // L'application est sombre par conception (docs/MVP.md §5.1). Avec la valeur par
+          // défaut `system`, les composants suivaient le réglage clair/sombre du poste, et
+          // les écrans aux couleurs codées en dur devenaient illisibles en mode clair (B14).
+          // La classe est posée une fois pour toutes sur <html> dans index.html.
+          darkModeSelector: '.app-dark',
           // cssLayer: {
           //   name: 'primeng',
           //   order: 'app-styles, primeng, another-css-library'

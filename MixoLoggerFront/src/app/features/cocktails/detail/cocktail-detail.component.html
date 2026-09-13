@@ -1,16 +1,44 @@
-<div>
-  <h2>Détail du cocktail</h2>
-  <h3>{{ cocktail().name }}</h3>
-  <p>{{ cocktail().description }}</p>
-  <button (click)="baisserNbVerres()">-</button>
-  <span>{{ nbVerres() }}</span>
-  <button (click)="augmenterNbVerres()">+</button>
-  <h4>Ingrédients :</h4>
-  <ul>
-    @for (ingredient of cocktail().ingredients; track ingredient) {
-      <li>{{ nbVerres() * ingredient.volume.value }}{{ ingredient.volume.unit }} {{ ingredient.ingredient.name }}</li>
-    }
-  </ul>
+<article class="detail" aria-labelledby="detail-nom">
+  <p class="detail__surtitre">Détail du cocktail</p>
+  <h2 id="detail-nom" class="detail__nom">{{ cocktail().name }}</h2>
 
-  <button (click)="makeThisCocktail()">Faire ce cocktail</button>
-</div>
+  @if (cocktail().description) {
+    <p class="detail__description">{{ cocktail().description }}</p>
+  }
+
+  <section class="detail__bloc" aria-labelledby="detail-verres">
+    <h3 id="detail-verres" class="detail__intertitre">Nombre de verres</h3>
+    <div class="verres">
+      <p-button
+        icon="pi pi-minus"
+        severity="secondary"
+        [rounded]="true"
+        [outlined]="true"
+        ariaLabel="Un verre de moins"
+        [disabled]="nbVerres() <= 1"
+        (onClick)="baisserNbVerres()" />
+      <output class="verres__nombre" aria-live="polite">{{ nbVerres() }}</output>
+      <p-button
+        icon="pi pi-plus"
+        severity="secondary"
+        [rounded]="true"
+        [outlined]="true"
+        ariaLabel="Un verre de plus"
+        (onClick)="augmenterNbVerres()" />
+    </div>
+  </section>
+
+  <section class="detail__bloc" aria-labelledby="detail-ingredients">
+    <h3 id="detail-ingredients" class="detail__intertitre">Ingrédients</h3>
+    <ul class="ingredients">
+      @for (ingredient of cocktail().ingredients; track ingredient.ingredient.id) {
+        <li class="ingredients__ligne">
+          <span class="ingredients__nom">{{ ingredient.ingredient.name }}</span>
+          <span class="ingredients__dose">{{ nbVerres() * ingredient.volume.value }} {{ ingredient.volume.unit }}</span>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <p-button label="Faire ce cocktail" icon="pi pi-check" (onClick)="makeThisCocktail()" />
+</article>

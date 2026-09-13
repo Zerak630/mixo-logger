@@ -1,10 +1,9 @@
-// Palette : docs/MVP.md §5.1. Le violet (#8A2BE2) n'atteint pas le contraste AA sur fond
-// sombre : réservé aux accents, jamais au texte courant.
-$fond-surface: #1E1E1E;
-$texte: #F5F5F5;
-$texte-secondaire: #E0E0E0;
-$accent: #8A2BE2;
-$bordure: rgba(224, 224, 224, 0.15);
+// Palette commune définie dans src/styles.scss (docs/MVP.md §5.1).
+$fond-surface: var(--mixo-surface);
+$texte: var(--mixo-texte);
+$texte-secondaire: var(--mixo-texte-secondaire);
+$accent: var(--mixo-accent);
+$bordure: var(--mixo-bordure);
 
 .bar_visual {
     width: 60%;
@@ -105,7 +104,7 @@ $bordure: rgba(224, 224, 224, 0.15);
         flex-basis: 100%;
         margin: 0;
         font-size: 0.875rem;
-        color: #FF8A80;
+        color: var(--mixo-erreur);
     }
 }
 

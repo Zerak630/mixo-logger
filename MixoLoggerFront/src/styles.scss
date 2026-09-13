@@ -1,6 +1,32 @@
 /* You can add global styles to this file, and also import other style files */
 @import "@openng/icons/openng-icons.css";
 
+// Palette de l'application — docs/MVP.md §5.1. Source unique : les écrans utilisent ces
+// variables plutôt que de recopier les valeurs, pour ne plus dériver les uns des autres.
+// Le violet électrique n'atteint pas le contraste AA sur le fond : accents uniquement.
+:root {
+	--mixo-fond: #0A0A0A;
+	--mixo-surface: #1E1E1E;
+	--mixo-accent: #8A2BE2;
+	--mixo-accent-fonce: #6A0DAD;
+	--mixo-texte: #F5F5F5;
+	--mixo-texte-secondaire: #E0E0E0;
+	--mixo-bordure: rgba(224, 224, 224, 0.15);
+	--mixo-erreur: #FF8A80;
+}
+
+// Le thème est sombre quel que soit le réglage du poste (cf. darkModeSelector dans
+// app.config.ts) : sans fond ni couleur explicites, la page héritait du canevas du
+// navigateur, blanc en mode clair.
+html {
+	color-scheme: dark;
+}
+
+body {
+	background: var(--mixo-fond);
+	color: var(--mixo-texte);
+}
+
 .sr-only {
 	position: absolute;
 	width: 1px;

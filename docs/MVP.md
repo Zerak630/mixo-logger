@@ -33,7 +33,7 @@
 | F1 | Consulter la liste des cocktails | Must | ✅ Fait (données en mémoire) — branché sur l'API le 13/09/2026 : l'écran affichait jusque-là une liste codée en dur |
 | F2 | Consulter le détail d'un cocktail (ingrédients + étapes) | Must | ✅ Fait — ingrédients (doses × nombre de verres) et étapes ordonnées |
 | F3 | Gérer « Mon Bar » (stock d'ingrédients) | Must | ✅ Écran complet : ajout avec autocomplétion, niveau par ligne, retrait, volume exact optionnel |
-| F4 | Savoir quels cocktails sont réalisables avec le stock | Must | 🟡 `CanMake` fonctionne enfin (B1 corrigé) ; pas encore exposé ni affiché |
+| F4 | Savoir quels cocktails sont réalisables avec le stock | Must | ✅ Badge sur chaque carte (réalisable / ce qui manque), filtre « Seulement ce que je peux faire », tri réalisables d'abord |
 | F5 | Ajouter / éditer une recette | Must | ❌ `CreateCocktailCommand` existe, pas d'endpoint ni d'écran |
 | F6 | Se connecter | Must | 🟡 Mock front uniquement (utilisateur en dur) |
 | F7 | Noter un cocktail (⭐) | Should | ❌ Non modélisé |
@@ -207,7 +207,7 @@ Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
 | Verbe | Route | Corps | Retour | Notes |
 |-------|-------|-------|--------|-------|
 | `GET` | `/ping` | — | `"pong"` | Healthcheck |
-| `GET` | `/api/cocktails` | — | `Cocktail[]` | ⚠️ renvoie l'entité de domaine, pas un DTO |
+| `GET` | `/api/cocktails` | — | `CocktailResumeDto[]` | `realisable` + `manques` (`ingredient`, `raison` : `Absent` \| `Insuffisant`) évalués contre le bar courant ; tri : réalisables, puis moins de manques, puis nom |
 | `GET` | `/api/cocktails/{id}` | — | `Cocktail` | ⚠️ pas de 404 si absent |
 | `GET` | `/api/bars` | — | `MyBarDto` | Bar unique global |
 | `GET` | `/api/ingredients` | — | `IngredientReferenceDto[]` | Référentiel trié par nom, alias normalisés inclus — alimente l'autocomplétion |
@@ -230,7 +230,6 @@ des autres controllers reste à faire (B5).
 |-------|-------|-------|
 | `POST` | `/api/cocktails` | Créer une recette (`CreateCocktailCommand` existe déjà, non exposé) |
 | `PUT` / `DELETE` | `/api/cocktails/{id}` | Éditer / supprimer |
-| `GET` | `/api/cocktails?makeable=true` | Filtrer sur le stock |
 | `POST` | `/api/cocktails/{id}/ratings` | Noter |
 | `POST` | `/api/auth/login` | S'authentifier |
 
@@ -287,7 +286,7 @@ accents et garder `#F5F5F5` pour le texte.
 
 | Écran | Route | État |
 |-------|-------|------|
-| Liste des cocktails | `/cocktails` | ✅ |
+| Liste des cocktails | `/cocktails` | ✅ badges de faisabilité et filtre (F4) |
 | Détail d'un cocktail | `/cocktails/:id` | ✅ ingrédients, étapes, nombre de verres, préparation |
 | Mon Bar | `/my_bar` | ✅ gestion complète du stock (F3) |
 | Ajout / édition de recette | `/cocktails/new` | ❌ |
@@ -401,7 +400,8 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
 - **B5 — Les controllers renvoient des types nus** (`Cocktail`, `bool`) : pas de 404, pas de 400,
   pas de message d'erreur exploitable côté front. 🟡 **Partiellement corrigé** : `DomainExceptionHandler`
   produit des `ProblemDetails` (404 vérifié sur `GET /api/cocktails/{id}` inconnu), et `BarsController`
-  renvoie des DTOs. **Reste** : `CocktailsController` expose toujours les entités du domaine. Coût concret :
+  renvoie des DTOs, tout comme `GET /api/cocktails` (`CocktailResumeDto`, depuis F4). **Reste** :
+  `GET /api/cocktails/{id}` expose toujours l'entité du domaine. Coût concret :
   le détail d'un cocktail publie des champs internes (`normalizedName`, `aliases`, `createdAt` de chaque
   ingrédient et étape), et le front dépend du nom `etapeRecettes` hérité de la propriété C#. Introduire
   le DTO obligera à renommer ce champ côté front (`models/cocktail.ts`).
@@ -503,7 +503,7 @@ Branche : `feat/mon-bar`, rebasée sur le lot A.
 | **B‑1** | Égalité d'`Ingredient` (nom normalisé) + référentiel d'alias | B1 | ✅ |
 | **B‑2** | Égalité de `Volume` en mL — *pas* par normalisation à la construction, cf. §7 | B3 | ✅ |
 | **B‑3** | Copie du bar par requête + contrôle de concurrence optimiste | B2 | ✅ |
-| **B‑4** | DTOs + `ActionResult<T>` + `ProblemDetails` | B5 | 🟡 `ProblemDetails` et DTOs du bar faits ; `CocktailsController` expose encore les entités |
+| **B‑4** | DTOs + `ActionResult<T>` + `ProblemDetails` | B5 | 🟡 `ProblemDetails`, DTOs du bar et de la liste des cocktails faits ; reste le détail d'un cocktail |
 
 ### Lot C — Multi-utilisateur (après §6.1)
 

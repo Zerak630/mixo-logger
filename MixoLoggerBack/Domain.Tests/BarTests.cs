@@ -366,4 +366,105 @@ public class BarTests
 		Assert.Equal(100d, bar.Stock[rhum].Volume!.Value, precision: 10);
 		Assert.Equal(60d, bar.Stock[citron].Volume!.Value, precision: 10);
 	}
+
+	// ------------------------------------------------------------------
+	// F4 — ce qui manque pour préparer un cocktail, et pourquoi.
+	// ------------------------------------------------------------------
+
+	[Fact]
+	public void Manques_CocktailRealisable_EstVide()
+	{
+		var rhum = new Ingredient("Rhum blanc");
+		var bar = new Bar();
+		bar.AddIngredient(rhum, Ml(100));
+
+		Assert.Empty(bar.Manques(UnCocktailAvec(new CocktailIngredient(rhum, 50, UniteVolume.Mililitre))));
+	}
+
+	[Fact]
+	public void Manques_DistingueAbsentEtInsuffisant_DansLOrdreDeLaRecette()
+	{
+		var rhum = new Ingredient("Rhum blanc");
+		var menthe = new Ingredient("Menthe");
+		var citron = new Ingredient("Citron vert");
+		var bar = new Bar();
+		bar.AddIngredient(rhum, Ml(20));
+		bar.AddIngredient(citron);
+
+		var mojito = UnCocktailAvec(
+			new CocktailIngredient(rhum, 50, UniteVolume.Mililitre),
+			new CocktailIngredient(menthe, 10, UniteVolume.Mililitre),
+			new CocktailIngredient(citron, 20, UniteVolume.Mililitre));
+
+		var manques = bar.Manques(mojito);
+
+		Assert.Collection(manques,
+			manque => { Assert.Equal(rhum, manque.Ingredient); Assert.Equal(RaisonManque.Insuffisant, manque.Raison); },
+			manque => { Assert.Equal(menthe, manque.Ingredient); Assert.Equal(RaisonManque.Absent, manque.Raison); });
+	}
+
+	[Fact]
+	public void Manques_PossessionSimple_NeManqueJamais()
+	{
+		var rhum = new Ingredient("Rhum blanc");
+		var bar = new Bar();
+		bar.AddIngredient(rhum, NiveauStock.PresqueFinie);
+
+		Assert.Empty(bar.Manques(UnCocktailAvec(new CocktailIngredient(rhum, 5, UniteVolume.Litre))));
+	}
+
+	[Fact]
+	public void Manques_TientCompteDeLaQuantite()
+	{
+		var rhum = new Ingredient("Rhum blanc");
+		var bar = new Bar();
+		bar.AddIngredient(rhum, Ml(80));
+
+		var cocktail = UnCocktailAvec(new CocktailIngredient(rhum, 50, UniteVolume.Mililitre));
+
+		Assert.Empty(bar.Manques(cocktail));
+		var manque = Assert.Single(bar.Manques(cocktail, quantite: 2));
+		Assert.Equal(RaisonManque.Insuffisant, manque.Raison);
+		Assert.Equal(100d, manque.Requis.EnMillilitres, precision: 10);
+	}
+
+	[Fact]
+	public void MakeCocktails_Infaisable_DetailleChaqueManqueDansLeMessage()
+	{
+		var rhum = new Ingredient("Rhum blanc");
+		var bar = new Bar();
+		bar.AddIngredient(rhum, Ml(10));
+
+		var cocktail = UnCocktailAvec(
+			new CocktailIngredient(rhum, 50, UniteVolume.Mililitre),
+			new CocktailIngredient(new Ingredient("Jus de tomate"), 90, UniteVolume.Mililitre));
+
+		var erreur = Assert.Throws<InvalidOperationException>(() => bar.MakeCocktail(cocktail));
+
+		Assert.Contains("« Rhum blanc » en quantité insuffisante", erreur.Message);
+		Assert.Contains("« Jus de tomate » absent", erreur.Message);
+	}
+
+	[Fact]
+	public void MakeCocktails_AccepteUneSequenceNonRejouable()
+	{
+		// La commande est parcourue deux fois (vérification puis consommation) :
+		// une séquence paresseuse ne doit pas être énumérée deux fois.
+		var rhum = new Ingredient("Rhum blanc");
+		var bar = new Bar();
+		bar.AddIngredient(rhum, Ml(100));
+		var cocktail = UnCocktailAvec(new CocktailIngredient(rhum, 40, UniteVolume.Mililitre));
+		int enumerations = 0;
+
+		IEnumerable<CommandeCocktail> Commande()
+		{
+			enumerations++;
+			yield return new CommandeCocktail(cocktail);
+		}
+
+		bar.MakeCocktails(Commande());
+
+		Assert.Equal(1, enumerations);
+		Assert.Equal(60d, bar.Stock[rhum].Volume!.Value, precision: 10);
+	}
 }

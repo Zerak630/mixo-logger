@@ -109,17 +109,33 @@ public class Bar : IEntity
     /// l'ensemble des lignes avant comparaison : deux cocktails réclamant chacun
     /// 50 mL de rhum ne passent pas avec 80 mL en stock (cf. docs/MVP.md §7, B11/B12).
     /// </summary>
-    public bool CanMakeAll(IEnumerable<CommandeCocktail> commande)
+    public bool CanMakeAll(IEnumerable<CommandeCocktail> commande) => Manques(commande).Count == 0;
+
+    /// <summary>Ce qui manque pour préparer <paramref name="quantite"/> fois ce cocktail (vide s'il est réalisable).</summary>
+    public IReadOnlyList<Manque> Manques(Cocktail cocktail, int quantite = 1) =>
+        Manques([new CommandeCocktail(cocktail, quantite)]);
+
+    /// <summary>
+    /// Ce qui manque pour préparer la commande entière, dans l'ordre des recettes.
+    /// C'est l'unique calcul de faisabilité : <see cref="CanMakeAll"/> et
+    /// <see cref="MakeCocktails"/> s'appuient dessus, pour que « réalisable » à l'écran
+    /// et « préparable » à la commande ne puissent jamais diverger.
+    /// </summary>
+    public IReadOnlyList<Manque> Manques(IEnumerable<CommandeCocktail> commande)
     {
         ArgumentNullException.ThrowIfNull(commande, nameof(commande));
 
+        List<Manque> manques = [];
+
         foreach ((Ingredient ingredient, Volume requis) in Cumuler(commande))
         {
-            if (!_stock.TryGetValue(ingredient, out LigneStock? ligne) || !ligne.Couvre(requis))
-                return false;
+            if (!_stock.TryGetValue(ingredient, out LigneStock? ligne))
+                manques.Add(new Manque(ingredient, RaisonManque.Absent, requis));
+            else if (!ligne.Couvre(requis))
+                manques.Add(new Manque(ingredient, RaisonManque.Insuffisant, requis));
         }
 
-        return true;
+        return manques;
     }
 
     /// <summary>
@@ -130,16 +146,19 @@ public class Bar : IEntity
     {
         ArgumentNullException.ThrowIfNull(commande, nameof(commande));
 
-        Dictionary<Ingredient, Volume> besoins = Cumuler(commande);
+        List<CommandeCocktail> lignes = [.. commande];
+        IReadOnlyList<Manque> manques = Manques(lignes);
 
-        foreach ((Ingredient ingredient, Volume requis) in besoins)
+        if (manques.Count > 0)
         {
-            if (!_stock.TryGetValue(ingredient, out LigneStock? ligne) || !ligne.Couvre(requis))
-                throw new InvalidOperationException(
-                    $"Commande impossible : « {ingredient.Name} » manque ou est en quantité insuffisante.");
+            string detail = string.Join(", ", manques.Select(manque => manque.Raison == RaisonManque.Absent
+                ? $"« {manque.Ingredient.Name} » absent"
+                : $"« {manque.Ingredient.Name} » en quantité insuffisante"));
+
+            throw new InvalidOperationException($"Commande impossible : {detail}.");
         }
 
-        foreach ((Ingredient ingredient, Volume requis) in besoins)
+        foreach ((Ingredient ingredient, Volume requis) in Cumuler(lignes))
         {
             _stock[ingredient] = _stock[ingredient].Retirer(requis);
         }

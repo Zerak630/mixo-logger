@@ -6,6 +6,18 @@ export interface Cocktail {
 	description: string;
 }
 
+/** Un cocktail de la liste, évalué contre le bar courant (F4). */
+export interface CocktailResume extends Cocktail {
+	realisable: boolean;
+	/** Ce qui manque pour un verre, dans l'ordre de la recette. Vide si réalisable. */
+	manques: Manque[];
+}
+
+export interface Manque {
+	ingredient: string;
+	raison: "Absent" | "Insuffisant";
+}
+
 export interface CocktailComponent {
 	ingredient: Ingredient;
 	volume: Volume;

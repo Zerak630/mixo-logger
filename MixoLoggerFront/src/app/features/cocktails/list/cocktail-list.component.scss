@@ -16,3 +16,44 @@ a {
   text-decoration: none;
   color: inherit;
 }
+
+.entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding: 0 1rem;
+
+  h2 {
+    margin: 0.5rem 0;
+  }
+
+  &__compte {
+    flex-basis: 100%;
+    margin: 0;
+    color: var(--mixo-texte-secondaire);
+  }
+}
+
+.filtre {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.vide {
+  max-width: 36rem;
+  margin: 2rem auto;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--mixo-texte-secondaire);
+  background: var(--mixo-surface);
+  border-radius: 12px;
+
+  // Le lien doit rester identifiable comme tel : la règle `a` ci-dessus retire le soulignement.
+  a {
+    color: var(--mixo-texte);
+    text-decoration: underline;
+  }
+}

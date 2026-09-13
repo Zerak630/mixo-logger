@@ -1,7 +1,7 @@
-import { Component, inject, input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, computed, inject, input, ChangeDetectionStrategy } from '@angular/core';
 import { ButtonModule } from '@openng/optimus-ui/button';
 import { CardModule } from '@openng/optimus-ui/card';
-import { Cocktail } from '../../models/cocktail';
+import { CocktailResume } from '../../models/cocktail';
 import { toggle } from '../../utils/toggle-signal';
 import { MessageModule } from '@openng/optimus-ui/message';
 import { MessageService } from '@openng/optimus-ui/api';
@@ -22,7 +22,14 @@ import { MessageService } from '@openng/optimus-ui/api';
   }
 })
 export class CocktailCardComponent {
-  public cocktail = input.required<Cocktail>();
+  public cocktail = input.required<CocktailResume>();
+
+  /** « Menthe, Citron vert » — les ingrédients qui empêchent de préparer un verre. */
+  public readonly libelleManques = computed(() =>
+    this.cocktail().manques
+      .map(manque => manque.raison === 'Insuffisant' ? `${manque.ingredient} (pas assez)` : manque.ingredient)
+      .join(', '));
+
   public isFocused = toggle(false);
 
   private readonly messageService = inject(MessageService);

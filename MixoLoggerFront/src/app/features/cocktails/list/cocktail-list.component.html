@@ -1,10 +1,36 @@
-<h2>Liste des cocktails</h2>
-<ul>
-  @for (cocktail of cocktails(); track cocktail.id) {
-    <li>
-      <a #link [href]="'cocktails/' + cocktail.id" (keypress)="handleKeyPress($event, card, link)">
-        <cocktail-card #card [cocktail]="cocktail"></cocktail-card>
-      </a>
-    </li>
-  }
-</ul>
+<header class="entete">
+  <h2>Liste des cocktails</h2>
+
+  <div class="filtre">
+    <p-toggleswitch
+      inputId="filtre-realisables"
+      [ngModel]="seulementRealisables()"
+      (onChange)="basculerFiltre($event)" />
+    <label for="filtre-realisables">Seulement ce que je peux faire</label>
+  </div>
+
+  <p class="entete__compte" aria-live="polite">
+    @switch (nombreRealisables()) {
+      @case (0) { Aucun cocktail réalisable avec ton bar }
+      @case (1) { 1 cocktail réalisable sur {{ cocktails().length }} }
+      @default { {{ nombreRealisables() }} cocktails réalisables sur {{ cocktails().length }} }
+    }
+  </p>
+</header>
+
+@if (cocktailsAffiches().length) {
+  <ul>
+    @for (cocktail of cocktailsAffiches(); track cocktail.id) {
+      <li>
+        <a #link [href]="'cocktails/' + cocktail.id" (keypress)="handleKeyPress($event, card, link)">
+          <cocktail-card #card [cocktail]="cocktail"></cocktail-card>
+        </a>
+      </li>
+    }
+  </ul>
+} @else {
+  <p class="vide">
+    Rien de réalisable pour l'instant. <a routerLink="/my_bar">Complète ton bar</a>
+    ou désactive le filtre pour voir ce qu'il te manque.
+  </p>
+}

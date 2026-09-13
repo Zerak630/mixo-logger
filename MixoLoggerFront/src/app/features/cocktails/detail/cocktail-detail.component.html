@@ -40,5 +40,18 @@
     </ul>
   </section>
 
+  <section class="detail__bloc" aria-labelledby="detail-etapes">
+    <h3 id="detail-etapes" class="detail__intertitre">Préparation</h3>
+    @if (etapes().length) {
+      <ol class="etapes">
+        @for (etape of etapes(); track etape.id) {
+          <li class="etapes__etape">{{ etape.description }}</li>
+        }
+      </ol>
+    } @else {
+      <p class="detail__description">Aucune étape renseignée pour ce cocktail.</p>
+    }
+  </section>
+
   <p-button label="Faire ce cocktail" icon="pi pi-check" (onClick)="makeThisCocktail()" />
 </article>

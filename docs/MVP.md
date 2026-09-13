@@ -31,7 +31,7 @@
 | # | Fonctionnalité | Priorité | État |
 |---|----------------|----------|------|
 | F1 | Consulter la liste des cocktails | Must | ✅ Fait (données en mémoire) — branché sur l'API le 13/09/2026 : l'écran affichait jusque-là une liste codée en dur |
-| F2 | Consulter le détail d'un cocktail (ingrédients + étapes) | Must | 🟡 Ingrédients affichés ; **étapes non affichées** — l'API les renvoie (`etapeRecettes`), le modèle front `CocktailDetail` ne les déclare pas |
+| F2 | Consulter le détail d'un cocktail (ingrédients + étapes) | Must | ✅ Fait — ingrédients (doses × nombre de verres) et étapes ordonnées |
 | F3 | Gérer « Mon Bar » (stock d'ingrédients) | Must | ✅ Écran complet : ajout avec autocomplétion, niveau par ligne, retrait, volume exact optionnel |
 | F4 | Savoir quels cocktails sont réalisables avec le stock | Must | 🟡 `CanMake` fonctionne enfin (B1 corrigé) ; pas encore exposé ni affiché |
 | F5 | Ajouter / éditer une recette | Must | ❌ `CreateCocktailCommand` existe, pas d'endpoint ni d'écran |
@@ -288,7 +288,7 @@ accents et garder `#F5F5F5` pour le texte.
 | Écran | Route | État |
 |-------|-------|------|
 | Liste des cocktails | `/cocktails` | ✅ |
-| Détail d'un cocktail | `/cocktails/:id` | 🟡 lisible (B14 corrigé) ; **les étapes ne sont pas affichées** (cf. F2) |
+| Détail d'un cocktail | `/cocktails/:id` | ✅ ingrédients, étapes, nombre de verres, préparation |
 | Mon Bar | `/my_bar` | ✅ gestion complète du stock (F3) |
 | Ajout / édition de recette | `/cocktails/new` | ❌ |
 | Connexion | modale | 🟡 mock |
@@ -401,7 +401,10 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
 - **B5 — Les controllers renvoient des types nus** (`Cocktail`, `bool`) : pas de 404, pas de 400,
   pas de message d'erreur exploitable côté front. 🟡 **Partiellement corrigé** : `DomainExceptionHandler`
   produit des `ProblemDetails` (404 vérifié sur `GET /api/cocktails/{id}` inconnu), et `BarsController`
-  renvoie des DTOs. **Reste** : `CocktailsController` expose toujours les entités du domaine.
+  renvoie des DTOs. **Reste** : `CocktailsController` expose toujours les entités du domaine. Coût concret :
+  le détail d'un cocktail publie des champs internes (`normalizedName`, `aliases`, `createdAt` de chaque
+  ingrédient et étape), et le front dépend du nom `etapeRecettes` hérité de la propriété C#. Introduire
+  le DTO obligera à renommer ce champ côté front (`models/cocktail.ts`).
 - **B6 — Couverture de test partielle.** ✅ Résolu côté back : `Domain.Tests` existe et couvre `Bar`,
   `Cocktail`, `EtapeRecette`, `Volume` et `VolumeConverter` en xUnit. Restent non testées les couches
   `Application` (handlers MediatR) et `Web`, ainsi que **tout le front** : Karma/Jasmine est installé

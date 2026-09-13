@@ -12,6 +12,18 @@ export interface CocktailComponent {
 }
 export interface CocktailDetail extends Cocktail {
 	ingredients: CocktailComponent[];
+	/**
+	 * Nom imposé par l'API, qui sérialise encore l'entité de domaine `Cocktail` telle
+	 * quelle (docs/MVP.md §7, B5). Il changera probablement avec l'introduction d'un DTO.
+	 */
+	etapeRecettes: EtapeRecette[];
+}
+
+export interface EtapeRecette {
+	id: Guid;
+	description: string;
+	/** Commence à 1. */
+	ordre: number;
 }
 
 export interface Ingredient {

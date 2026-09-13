@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { Button } from '@openng/optimus-ui/button';
 import { CocktailDetail } from '../../../models/cocktail';
 import { CocktailsService } from '../cocktails.service';
@@ -13,6 +13,10 @@ import { CocktailsService } from '../cocktails.service';
 })
 export default class CocktailDetailComponent {
   readonly cocktail = input.required<CocktailDetail>();
+
+  /** Triées par `ordre` : l'affichage ne doit pas dépendre de l'ordre de sérialisation de l'API. */
+  readonly etapes = computed(() =>
+    [...(this.cocktail().etapeRecettes ?? [])].sort((a, b) => a.ordre - b.ordre));
 
   nbVerres = signal(1);
 

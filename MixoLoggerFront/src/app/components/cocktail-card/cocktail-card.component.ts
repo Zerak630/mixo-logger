@@ -1,10 +1,10 @@
 import { Component, inject, input } from '@angular/core';
-import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
+import { ButtonModule } from '@openng/optimus-ui/button';
+import { CardModule } from '@openng/optimus-ui/card';
 import { Cocktail } from '../../models/cocktail';
 import { toggle } from '../../utils/toggle-signal';
-import { MessageModule } from 'primeng/message';
-import { MessageService } from 'primeng/api';
+import { MessageModule } from '@openng/optimus-ui/message';
+import { MessageService } from '@openng/optimus-ui/api';
 
 @Component({
   selector: 'cocktail-card',

@@ -2,7 +2,7 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessC
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { providePrimeNG } from 'primeng/config';
+import { provideOptimus } from '@openng/optimus-ui/config';
 import { routes } from './app.routes';
 import { httpInterceptor } from './core/http-interceptor';
 import { MyPreset } from './styles/customTheme';
@@ -13,9 +13,9 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withInterceptors([httpInterceptor])),
-    // Plus de provideAnimationsAsync() : PrimeNG 21 anime ses composants via
-    // @primeuix/motion et ne dépend plus de @angular/animations (déprécié).
-    providePrimeNG({
+    // Pas de provideAnimationsAsync() : OptimusUI (comme PrimeNG 21 dont il est issu)
+    // anime ses composants via @openng/optimus-ui-motion, sans @angular/animations.
+    provideOptimus({
       theme: {
         preset: MyPreset,
         options: {

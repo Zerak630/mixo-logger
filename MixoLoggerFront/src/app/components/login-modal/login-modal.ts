@@ -1,12 +1,12 @@
 import { Component, computed, inject, signal } from "@angular/core";
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
-import { Button } from "primeng/button";
-import { DialogModule } from "primeng/dialog";
-import { FloatLabel } from "primeng/floatlabel";
-import { InputIcon } from "primeng/inputicon";
+import { Button } from "@openng/optimus-ui/button";
+import { DialogModule } from "@openng/optimus-ui/dialog";
+import { FloatLabel } from "@openng/optimus-ui/floatlabel";
+import { InputIcon } from "@openng/optimus-ui/inputicon";
 import AuthService from "../../core/auth.service";
 import { toggle, ToggleableSignal } from "../../utils/toggle-signal";
-import { IconField } from "primeng/iconfield";
+import { IconField } from "@openng/optimus-ui/iconfield";
 
 @Component({
 	selector: 'login-modal',

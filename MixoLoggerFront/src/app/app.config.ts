@@ -2,7 +2,6 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessC
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 import { routes } from './app.routes';
 import { httpInterceptor } from './core/http-interceptor';
@@ -14,7 +13,8 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withInterceptors([httpInterceptor])),
-    provideAnimationsAsync(),
+    // Plus de provideAnimationsAsync() : PrimeNG 21 anime ses composants via
+    // @primeuix/motion et ne dépend plus de @angular/animations (déprécié).
     providePrimeNG({
       theme: {
         preset: MyPreset,

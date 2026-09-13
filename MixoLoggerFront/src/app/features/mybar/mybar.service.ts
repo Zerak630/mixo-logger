@@ -1,7 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
 import { Observable } from "rxjs";
-import { LigneStock, MyBar, NiveauStock } from "../../models/bar";
+import { IngredientReference, LigneStock, MyBar, NiveauStock } from "../../models/bar";
 import { Volume } from "../../models/cocktail";
 
 @Injectable({
@@ -12,6 +12,11 @@ export class MyBarService {
 
 	public getMyBar(): Observable<MyBar> {
 		return this.http.get<MyBar>("/Bars");
+	}
+
+	/** Référentiel complet des ingrédients connus, pour l'autocomplétion. */
+	public getIngredients(): Observable<IngredientReference[]> {
+		return this.http.get<IngredientReference[]>("/Ingredients");
 	}
 
 	/**

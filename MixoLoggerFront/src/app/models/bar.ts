@@ -28,3 +28,11 @@ export interface LigneStock {
 export interface MyBar {
 	ingredients: LigneStock[];
 }
+
+/** Entrée du référentiel d'ingrédients, proposée à l'autocomplétion. */
+export interface IngredientReference {
+	id: Guid;
+	name: string;
+	/** Autres libellés reconnus par l'API, déjà normalisés (cf. `normaliserNom`). */
+	aliases: string[];
+}

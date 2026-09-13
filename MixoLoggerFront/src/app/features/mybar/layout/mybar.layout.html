@@ -1,14 +1,118 @@
 <section class="bar_visual"></section>
 
-<ul class="stock">
-    @for (ligne of stockList(); track ligne.name) {
-        <li class="stock__ligne">
-            <span class="stock__nom">{{ ligne.name }}</span>
-            <span class="stock__niveau" [class.stock__niveau--precis]="ligne.suiviPrecis">
-                {{ libelleQuantite(ligne) }}
-            </span>
-        </li>
-    } @empty {
-        <li class="stock__vide">Ton bar est vide.</li>
-    }
-</ul>
+<section class="mon-bar">
+	<header class="mon-bar__entete">
+		<h2 class="mon-bar__titre">Mon bar</h2>
+		<p class="mon-bar__compte">
+			@switch (stockList().length) {
+				@case (0) { Aucun ingrédient }
+				@case (1) { 1 ingrédient }
+				@default { {{ stockList().length }} ingrédients }
+			}
+		</p>
+	</header>
+
+	<form class="ajout" [formGroup]="formulaire" (ngSubmit)="ajouter()" aria-labelledby="ajout-titre">
+		<h3 id="ajout-titre" class="ajout__titre">Ajouter un ingrédient</h3>
+
+		<div class="ajout__ligne">
+			<div class="champ champ--ingredient">
+				<label for="ajout-ingredient" class="champ__label">Ingrédient</label>
+				<p-autocomplete
+					inputId="ajout-ingredient"
+					formControlName="ingredient"
+					optionLabel="name"
+					[suggestions]="suggestions()"
+					(completeMethod)="rechercher($event)"
+					[dropdown]="true"
+					[forceSelection]="false"
+					[showEmptyMessage]="false"
+					placeholder="Rhum blanc, citron vert…"
+					[fluid]="true" />
+			</div>
+
+			<div class="champ">
+				<span id="ajout-niveau-label" class="champ__label">Niveau</span>
+				<p-selectbutton
+					formControlName="niveau"
+					[options]="optionsNiveau"
+					optionLabel="label"
+					optionValue="value"
+					[allowEmpty]="false"
+					ariaLabelledBy="ajout-niveau-label"
+					size="small" />
+			</div>
+		</div>
+
+		<div class="ajout__ligne">
+			<div class="champ champ--interrupteur">
+				<p-toggleswitch inputId="ajout-suivi" formControlName="suiviPrecis" />
+				<label for="ajout-suivi">Suivre le volume exact</label>
+			</div>
+
+			@if (afficherVolume()) {
+				<div class="champ champ--volume">
+					<label for="ajout-volume" class="sr-only">Volume</label>
+					<p-inputnumber
+						inputId="ajout-volume"
+						formControlName="volume"
+						[maxFractionDigits]="1"
+						[useGrouping]="false"
+						placeholder="70" />
+					<p-selectbutton
+						formControlName="unite"
+						[options]="optionsUnite"
+						optionLabel="label"
+						optionValue="value"
+						[allowEmpty]="false"
+						ariaLabelledBy="ajout-volume"
+						size="small" />
+				</div>
+				@if (formulaire.controls.volume.touched && formulaire.controls.volume.errors) {
+					<p class="champ__erreur" role="alert">Indique un volume supérieur à 0.</p>
+				}
+			}
+
+			<p-button type="submit" label="Ajouter" icon="pi pi-plus" [loading]="ajoutEnCours()" class="ajout__valider" />
+		</div>
+	</form>
+
+	@if (stockList().length) {
+		<ul class="stock" aria-label="Ingrédients du bar">
+			@for (ligne of stockList(); track ligne.id) {
+				<li class="stock__ligne" [class.stock__ligne--en-cours]="estEnCours(ligne)">
+					<div class="stock__identite">
+						<span [id]="'ligne-' + ligne.id" class="stock__nom">{{ ligne.name }}</span>
+						@if (libelleVolume(ligne); as volume) {
+							<span class="stock__volume" title="Volume suivi précisément">{{ volume }}</span>
+						}
+					</div>
+
+					<p-selectbutton
+						[options]="optionsNiveau"
+						optionLabel="label"
+						optionValue="value"
+						[allowEmpty]="false"
+						[ngModel]="ligne.niveau"
+						(onChange)="changerNiveau(ligne, $event.value)"
+						[disabled]="estEnCours(ligne)"
+						[ariaLabelledBy]="'ligne-' + ligne.id"
+						size="small" />
+
+					<p-button
+						icon="pi pi-trash"
+						severity="secondary"
+						[text]="true"
+						[rounded]="true"
+						[ariaLabel]="'Retirer ' + ligne.name"
+						[disabled]="estEnCours(ligne)"
+						(onClick)="retirer(ligne, $event)" />
+				</li>
+			}
+		</ul>
+	} @else {
+		<p class="stock__vide">Ton bar est vide. Ajoute ce que tu as sous la main : une bouteille entamée compte aussi.</p>
+	}
+</section>
+
+<p-confirmpopup />

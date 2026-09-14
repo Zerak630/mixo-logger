@@ -34,7 +34,7 @@
 | F2 | Consulter le détail d'un cocktail (ingrédients + étapes) | Must | ✅ Fait — ingrédients (doses × nombre de verres) et étapes ordonnées |
 | F3 | Gérer « Mon Bar » (stock d'ingrédients) | Must | ✅ Écran complet : ajout avec autocomplétion, niveau par ligne, retrait, volume exact optionnel |
 | F4 | Savoir quels cocktails sont réalisables avec le stock | Must | ✅ Badge sur chaque carte (réalisable / ce qui manque), filtre « Seulement ce que je peux faire », tri réalisables d'abord |
-| F5 | Ajouter / éditer une recette | Must | ❌ `CreateCocktailCommand` existe, pas d'endpoint ni d'écran |
+| F5 | Ajouter / éditer une recette | Must | ✅ Création et édition (`/cocktails/new`, `/cocktails/:id/edit`), doses en volume ou en décompte. **Suppression reportée au lot C** (sans auteur, n'importe qui pourrait effacer la recette d'un autre) |
 | F6 | Se connecter | Must | 🟡 Mock front uniquement (utilisateur en dur) |
 | F7 | Noter un cocktail (⭐) | Should | ❌ Non modélisé |
 | F8 | Recherche / filtres | Should | ❌ Non implémenté |
@@ -137,7 +137,7 @@ erDiagram
     COCKTAIL ||--|{ COCKTAIL_INGREDIENT : "contient"
     COCKTAIL ||--|{ ETAPE_RECETTE : "se prepare en"
     COCKTAIL_INGREDIENT }o--|| INGREDIENT : "reference"
-    COCKTAIL_INGREDIENT ||--|| VOLUME : "quantite"
+    COCKTAIL_INGREDIENT ||--|| DOSE : "quantite pour un verre"
     BAR ||--o{ STOCK_LIGNE : "possede"
     STOCK_LIGNE }o--|| INGREDIENT : "reference"
     STOCK_LIGNE |o--o| VOLUME : "quantite (optionnelle)"
@@ -163,6 +163,10 @@ erDiagram
         int Ordre
         string Texte
     }
+    DOSE {
+        double Valeur
+        string Unite
+    }
     VOLUME {
         double Value
         string Unit
@@ -182,6 +186,15 @@ erDiagram
   mode nominal du grand public) et *suivi précis* (un `Volume` décrémenté à chaque cocktail). Une ligne
   absente signifie « je n'ai pas cet ingrédient ». Cf. [STRATEGIE.md](STRATEGIE.md) §3.
 - `UniteVolume` se sérialise en chaîne (`"mL"`) via `UniteVolumeConverter`.
+- **`Dose`** (quantité dans une recette) est un volume (`mL`, `cL`, `dL`, `L`) **ou un décompte**
+  (`piece`, `feuille`, `trait`, `pincee`). Seul un volume se compare au stock ; un décompte se vérifie
+  par la **seule présence** de l'ingrédient dans le bar et ne retire rien au stock. La liste des unités
+  existe côté API (`Dose.Unites`, exposée par `GET /api/cocktails/unites`) ; les libellés affichés
+  (« feuille(s) ») sont côté front (`utils/libelle-dose.ts`).
+- **`Cocktail` est immuable** : `Modifier()` renvoie une nouvelle instance de même `Id`, substituée
+  d'un bloc par le dépôt. Règles : nom et étapes non vides, au moins un ingrédient et une étape, pas
+  deux fois le même ingrédient (alias compris). L'unicité du nom de recette (sans accents ni casse) est
+  vérifiée par l'application, sans atomicité — deux créations simultanées du même nom peuvent passer.
 
 ### 3.2 À ajouter pour couvrir les objectifs
 
@@ -208,7 +221,10 @@ Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
 |-------|-------|-------|--------|-------|
 | `GET` | `/ping` | — | `"pong"` | Healthcheck |
 | `GET` | `/api/cocktails` | — | `CocktailResumeDto[]` | `realisable` + `manques` (`ingredient`, `raison` : `Absent` \| `Insuffisant`) évalués contre le bar courant ; tri : réalisables, puis moins de manques, puis nom |
-| `GET` | `/api/cocktails/{id}` | — | `Cocktail` | ⚠️ pas de 404 si absent |
+| `GET` | `/api/cocktails/{id}` | — | `CocktailDetailDto` | `ingredients` (`ingredientId`, `name`, `valeur`, `unite`) et `etapes` (`ordre`, `description`) ; `404` si absent |
+| `GET` | `/api/cocktails/unites` | — | `string[]` | `mL`, `cL`, `dL`, `L`, `piece`, `feuille`, `trait`, `pincee` |
+| `POST` | `/api/cocktails` | `RecetteSaisie` | `201` + `CocktailDetailDto` | `{ name, description?, ingredients: [{ name, valeur, unite }], etapes: string[] }` ; ingrédients par nom (alias compris, créés si inconnus **une fois la recette validée**) ; `400` contenu invalide, `409` nom déjà pris |
+| `PUT` | `/api/cocktails/{id}` | `RecetteSaisie` | `CocktailDetailDto` | Remplace tout le contenu ; mêmes règles ; `404` si absent. Pas de contrôle de version : deux éditions simultanées gardent la dernière |
 | `GET` | `/api/bars` | — | `MyBarDto` | Bar unique global |
 | `GET` | `/api/ingredients` | — | `IngredientReferenceDto[]` | Référentiel trié par nom, alias normalisés inclus — alimente l'autocomplétion |
 | `POST` | `/api/bars/MakeCocktails` | `CocktailBarOrder[]` | `MyBarDto` | Tout ou rien ; `409` si infaisable |
@@ -221,15 +237,15 @@ Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
 > et directement lié à B8 (les attributs MVC n'ont rien à faire dans `Application`).
 
 Les erreurs du domaine sont traduites en `ProblemDetails` (RFC 7807) par `Web/DomainExceptionHandler` :
-`KeyNotFoundException` → 404, `ArgumentException` → 400, `InvalidOperationException` → 409. La reprise
-des autres controllers reste à faire (B5).
+`KeyNotFoundException` → 404, `ArgumentException` → 400, `InvalidOperationException` → 409. Le suffixe
+technique « (Parameter 'xxx') » des `ArgumentException` est retiré du détail renvoyé, qui s'affiche tel
+quel dans les formulaires.
 
 ### 4.2 À ajouter
 
 | Verbe | Route | Objet |
 |-------|-------|-------|
-| `POST` | `/api/cocktails` | Créer une recette (`CreateCocktailCommand` existe déjà, non exposé) |
-| `PUT` / `DELETE` | `/api/cocktails/{id}` | Éditer / supprimer |
+| `DELETE` | `/api/cocktails/{id}` | Supprimer une recette — avec le lot C, réservé à l'auteur |
 | `POST` | `/api/cocktails/{id}/ratings` | Noter |
 | `POST` | `/api/auth/login` | S'authentifier |
 
@@ -289,7 +305,7 @@ accents et garder `#F5F5F5` pour le texte.
 | Liste des cocktails | `/cocktails` | ✅ badges de faisabilité et filtre (F4) |
 | Détail d'un cocktail | `/cocktails/:id` | ✅ ingrédients, étapes, nombre de verres, préparation |
 | Mon Bar | `/my_bar` | ✅ gestion complète du stock (F3) |
-| Ajout / édition de recette | `/cocktails/new` | ❌ |
+| Ajout / édition de recette | `/cocktails/new`, `/cocktails/:id/edit` | ✅ (F5) |
 | Connexion | modale | 🟡 mock |
 
 Composants clés : `cocktail-card` (image, nom, note), `login-modal`.
@@ -308,6 +324,20 @@ Composants clés : `cocktail-card` (image, nom, note), `login-modal`.
   le bar et l'explique par un toast, au lieu de laisser agir sur des données fausses.
 - La normalisation des noms existe en deux exemplaires (`IngredientName.Normalize` côté API,
   `normaliserNom` côté front) : **les garder alignés**, sinon la recherche ne retrouve plus les alias.
+  La recherche elle-même est partagée avec l'écran de recette (`utils/recherche-ingredients.ts`).
+
+**Écran de recette (F5)** — `/cocktails/new` et `/cocktails/:id/edit`, même composant :
+
+- Accès : bouton « Ajouter une recette » sur la liste, « Modifier » sur le détail.
+- Lignes d'ingrédients : autocomplétion (sans reproposer ceux des autres lignes), quantité, unité
+  (volumes et décomptes). Un **doublon est signalé avant l'envoi**, alias compris (« rhum » puis
+  « white rum »). Étapes : ajout, retrait, montée / descente.
+- Les erreurs de saisie n'apparaissent qu'au premier envoi ou après passage dans le champ ; à l'envoi,
+  le focus va au premier champ en erreur. Une erreur de l'API (nom déjà pris…) s'affiche dans un
+  bandeau d'alerte **qui reçoit le focus**, le bouton d'envoi étant en bas de page.
+- Après enregistrement : redirection vers le détail et toast. Un ingrédient saisi par alias apparaît
+  sous son nom canonique (« angostura » devient « Bitters »).
+- **Non traité** : aucune alerte si l'on quitte le formulaire avec des modifications non enregistrées.
 
 Structure d'un écran de liste :
 
@@ -359,8 +389,8 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
 5. **Images** : upload de fichiers (→ stockage disque + service de fichiers statiques) ou simple
    URL saisie à la main ? La seconde suffit largement pour un MVP.
 
-6. **Unité de saisie** : le domaine gère mL/cL/dL/L, mais une recette contient aussi
-   « 2 feuilles de menthe » ou « 1 trait d'angostura ». Faut-il un type de quantité non volumique ?
+6. ~~**Unité de saisie**~~ ✅ **Tranché (F5)** : oui, les recettes acceptent des décomptes (`piece`,
+   `feuille`, `trait`, `pincee`) vérifiés par simple présence dans le bar. Cf. `Dose` au §3.1.
 
 ---
 
@@ -398,13 +428,12 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
 - **B4 — CORS `AllowAnyOrigin` + aucune auth côté back.** Acceptable en développement local,
   à restreindre dès que l'API est exposée hors de la machine.
 - **B5 — Les controllers renvoient des types nus** (`Cocktail`, `bool`) : pas de 404, pas de 400,
-  pas de message d'erreur exploitable côté front. 🟡 **Partiellement corrigé** : `DomainExceptionHandler`
-  produit des `ProblemDetails` (404 vérifié sur `GET /api/cocktails/{id}` inconnu), et `BarsController`
-  renvoie des DTOs, tout comme `GET /api/cocktails` (`CocktailResumeDto`, depuis F4). **Reste** :
-  `GET /api/cocktails/{id}` expose toujours l'entité du domaine. Coût concret :
-  le détail d'un cocktail publie des champs internes (`normalizedName`, `aliases`, `createdAt` de chaque
-  ingrédient et étape), et le front dépend du nom `etapeRecettes` hérité de la propriété C#. Introduire
-  le DTO obligera à renommer ce champ côté front (`models/cocktail.ts`).
+  pas de message d'erreur exploitable côté front. ✅ **Corrigé** : `DomainExceptionHandler` produit des
+  `ProblemDetails`, et plus aucun endpoint n'expose d'entité de domaine — `BarsController` renvoie des
+  DTOs, `GET /api/cocktails` renvoie `CocktailResumeDto` (F4), `GET /api/cocktails/{id}` renvoie
+  `CocktailDetailDto` (F5 ; le champ `etapeRecettes` est devenu `etapes` côté front). Seul
+  `POST /api/cocktails` renvoie un `ActionResult<T>` (pour le `201 Created`) ; les autres actions
+  renvoient le DTO nu, les erreurs passant par le gestionnaire d'exceptions.
 - **B6 — Couverture de test partielle.** ✅ Résolu côté back : `Domain.Tests` existe et couvre `Bar`,
   `Cocktail`, `EtapeRecette`, `Volume` et `VolumeConverter` en xUnit. Restent non testées les couches
   `Application` (handlers MediatR) et `Web`, ainsi que **tout le front** : Karma/Jasmine est installé
@@ -503,7 +532,7 @@ Branche : `feat/mon-bar`, rebasée sur le lot A.
 | **B‑1** | Égalité d'`Ingredient` (nom normalisé) + référentiel d'alias | B1 | ✅ |
 | **B‑2** | Égalité de `Volume` en mL — *pas* par normalisation à la construction, cf. §7 | B3 | ✅ |
 | **B‑3** | Copie du bar par requête + contrôle de concurrence optimiste | B2 | ✅ |
-| **B‑4** | DTOs + `ActionResult<T>` + `ProblemDetails` | B5 | 🟡 `ProblemDetails`, DTOs du bar et de la liste des cocktails faits ; reste le détail d'un cocktail |
+| **B‑4** | DTOs + `ActionResult<T>` + `ProblemDetails` | B5 | ✅ |
 
 ### Lot C — Multi-utilisateur (après §6.1)
 
@@ -511,7 +540,7 @@ Branche : `feat/mon-bar`, rebasée sur le lot A.
 |-------|---------|
 | **C1** | Modèle `User` + auth back réelle (hash + JWT) + CORS restreint — lève B4 et B7 |
 | **C2** | `Bar.OwnerId` / `Cocktail.AuthorId` selon les réponses à §6.1 |
-| **C3** | Création / édition de recette (F5) — bon terrain pour les **Signal Forms** d'Angular 22 |
+| **C3** | ~~Création / édition de recette (F5)~~ ✅ livrée avant le lot C. Reste à y ajouter l'auteur (`Cocktail.AuthorId`), la règle « seul l'auteur modifie » et la suppression. Formulaire en *Reactive Forms* et non en *Signal Forms* : les composants OptimusUI sont des `ControlValueAccessor`, et Mon Bar comme la connexion utilisent déjà les *Reactive Forms* |
 | **C4** | Notes (F7) et recherche (F8) |
 | **C5** | Images (F9) |
 

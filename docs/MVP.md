@@ -34,7 +34,7 @@
 | F2 | Consulter le détail d'un cocktail (ingrédients + étapes) | Must | ✅ Fait — ingrédients (doses × nombre de verres) et étapes ordonnées |
 | F3 | Gérer « Mon Bar » (stock d'ingrédients) | Must | ✅ Écran complet : ajout avec autocomplétion, niveau par ligne, retrait, volume exact optionnel |
 | F4 | Savoir quels cocktails sont réalisables avec le stock | Must | ✅ Badge sur chaque carte (réalisable / ce qui manque), filtre « Seulement ce que je peux faire », tri réalisables d'abord |
-| F5 | Ajouter / éditer une recette | Must | ✅ Création et édition (`/cocktails/new`, `/cocktails/:id/edit`), doses en volume ou en décompte. **Suppression reportée au lot C** (sans auteur, n'importe qui pourrait effacer la recette d'un autre) |
+| F5 | Ajouter / éditer une recette | Must | ✅ Création, édition (`/cocktails/new`, `/cocktails/:id/edit`) et suppression, doses en volume ou en décompte. Modification et suppression réservées à l'auteur (lot C2) |
 | F6 | Se connecter | Must | ✅ Connexion / déconnexion réelles, cookie de session HttpOnly, toute l'application protégée. Comptes en configuration hors dépôt (§10.2) |
 | F7 | Noter un cocktail (⭐) | Should | ❌ Non modélisé |
 | F8 | Recherche / filtres | Should | ❌ Non implémenté |
@@ -211,9 +211,11 @@ Les objectifs mentionnent « noter » et « partager » : **ni l'un ni l'autre n
 ```
 USER      { Id, Username, PasswordHash, DisplayName, CreatedAt }
 RATING    { Id, CocktailId, UserId, Score (1-5), Comment?, CreatedAt }   -- unicité (CocktailId, UserId)
-COCKTAIL  + AuthorId, CreatedAt, ImageUrl?
-BAR       + OwnerId                                                      -- 1 bar par utilisateur
+COCKTAIL  + CreatedAt, ImageUrl?
 ```
+
+Déjà en place (lot C2) : `Bar.OwnerId` (un bar par utilisateur) et `Cocktail.AuthorId` (`null` pour
+les recettes d'origine, en lecture seule). `Utilisateur` existe depuis F6, sans persistance.
 
 Décisions à trancher avant d'écrire les migrations : cf. §6.
 
@@ -228,31 +230,35 @@ Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
 | Verbe | Route | Corps | Retour | Notes |
 |-------|-------|-------|--------|-------|
 | `GET` | `/ping` | — | `"pong"` | Healthcheck |
-| `GET` | `/api/cocktails` | — | `CocktailResumeDto[]` | `realisable` + `manques` (`ingredient`, `raison` : `Absent` \| `Insuffisant`) évalués contre le bar courant ; tri : réalisables, puis moins de manques, puis nom |
-| `GET` | `/api/cocktails/{id}` | — | `CocktailDetailDto` | `ingredients` (`ingredientId`, `name`, `valeur`, `unite`) et `etapes` (`ordre`, `description`) ; `404` si absent |
+| `GET` | `/api/cocktails` | — | `CocktailResumeDto[]` | `realisable` + `manques` (`ingredient`, `raison` : `Absent` \| `Insuffisant`) évalués contre **le bar de l'utilisateur connecté** ; tri : réalisables, puis moins de manques, puis nom |
+| `GET` | `/api/cocktails/{id}` | — | `CocktailDetailDto` | `ingredients` (`ingredientId`, `name`, `valeur`, `unite`), `etapes` (`ordre`, `description`), `auteur` (nom affiché, `null` pour une recette d'origine) et `modifiable` (l'utilisateur connecté en est l'auteur) ; `404` si absent |
 | `GET` | `/api/cocktails/unites` | — | `string[]` | `mL`, `cL`, `dL`, `L`, `piece`, `feuille`, `trait`, `pincee` |
-| `POST` | `/api/cocktails` | `RecetteSaisie` | `201` + `CocktailDetailDto` | `{ name, description?, ingredients: [{ name, valeur, unite }], etapes: string[] }` ; ingrédients par nom (alias compris, créés si inconnus **une fois la recette validée**) ; `400` contenu invalide, `409` nom déjà pris |
-| `PUT` | `/api/cocktails/{id}` | `RecetteSaisie` | `CocktailDetailDto` | Remplace tout le contenu ; mêmes règles ; `404` si absent. Pas de contrôle de version : deux éditions simultanées gardent la dernière |
+| `POST` | `/api/cocktails` | `RecetteSaisie` | `201` + `CocktailDetailDto` | `{ name, description?, ingredients: [{ name, valeur, unite }], etapes: string[] }` ; ingrédients par nom (alias compris, créés si inconnus **une fois la recette validée**) ; l'utilisateur connecté devient l'auteur ; `400` contenu invalide, `409` nom déjà pris |
+| `PUT` | `/api/cocktails/{id}` | `RecetteSaisie` | `CocktailDetailDto` | Remplace tout le contenu ; mêmes règles ; **`403` si l'utilisateur n'est pas l'auteur** (vérifié avant le contenu) ; `404` si absent. Pas de contrôle de version : deux éditions simultanées gardent la dernière |
+| `DELETE` | `/api/cocktails/{id}` | — | `204` | **`403` si l'utilisateur n'est pas l'auteur** ; `404` si absent ; `409` si la recette a été modifiée entre la lecture et la suppression |
 | `POST` | `/api/auth/connexion` | `{ identifiant, motDePasse }` | `UtilisateurDto` + cookie | **Anonyme.** `401` même réponse pour identifiant inconnu et mauvais mot de passe ; `429` au-delà de 5 essais par minute et par IP |
 | `POST` | `/api/auth/deconnexion` | — | `204` | **Anonyme** (une session expirée doit pouvoir se fermer) |
 | `GET` | `/api/auth/moi` | — | `UtilisateurDto` | `{ id, identifiant, nomAffiche }` ; `401` sans session |
-
-> **Toute l'API exige une session** (politique d'autorisation par défaut), sauf ce qui est marqué
-> *anonyme* ci-dessus et `/ping`. Un endpoint ajouté sans y penser est donc protégé, pas public.
-> Sans session : `401` en `ProblemDetails`, jamais de redirection.
-| `GET` | `/api/bars` | — | `MyBarDto` | Bar unique global |
+| `GET` | `/api/bars` | — | `MyBarDto` | Bar de l'utilisateur connecté, vide tant qu'il n'a rien déclaré |
 | `GET` | `/api/ingredients` | — | `IngredientReferenceDto[]` | Référentiel trié par nom, alias normalisés inclus — alimente l'autocomplétion |
 | `POST` | `/api/bars/MakeCocktails` | `CocktailBarOrder[]` | `MyBarDto` | Tout ou rien ; `409` si infaisable |
 | `POST` | `/api/bars/ingredients` | `{ name, niveau?, quantity? }` | `MyBarDto` | `quantity` facultatif = possession simple ; `name` accepte un alias |
 | `PATCH` | `/api/bars/ingredients/{name}` | `{ niveau }` | `MyBarDto` | `Pleine` \| `Entamee` \| `PresqueFinie` |
 | `DELETE` | `/api/bars/ingredients/{name}` | — | `MyBarDto` | `404` si absent du bar |
 
+> **Toute l'API exige une session** (politique d'autorisation par défaut), sauf ce qui est marqué
+> *anonyme* ci-dessus et `/ping`. Un endpoint ajouté sans y penser est donc protégé, pas public.
+> Sans session : `401` en `ProblemDetails`, jamais de redirection.
+>
+> **Les routes `/api/bars` portent toujours sur le bar de l'appelant.** L'identité vient du cookie
+> de session (`IUtilisateurCourant`), jamais d'un paramètre : impossible de viser le bar d'un autre.
+
 > Le corps de `MakeCocktails` est un **tableau nu**, pas `{ "order": [...] }` : l'attribut `[FromBody]`
 > posé sur la propriété `Order` de la commande lie le corps entier à cette propriété. Contre-intuitif,
 > et directement lié à B8 (les attributs MVC n'ont rien à faire dans `Application`).
 
 Les erreurs du domaine sont traduites en `ProblemDetails` (RFC 7807) par `Web/DomainExceptionHandler` :
-`KeyNotFoundException` → 404, `ArgumentException` → 400, `InvalidOperationException` → 409. Le suffixe
+`ActionNonAutoriseeException` → 403, `KeyNotFoundException` → 404, `ArgumentException` → 400, `InvalidOperationException` → 409. Le suffixe
 technique « (Parameter 'xxx') » des `ArgumentException` est retiré du détail renvoyé, qui s'affiche tel
 quel dans les formulaires.
 
@@ -260,7 +266,6 @@ quel dans les formulaires.
 
 | Verbe | Route | Objet |
 |-------|-------|-------|
-| `DELETE` | `/api/cocktails/{id}` | Supprimer une recette — avec le lot C, réservé à l'auteur |
 | `POST` | `/api/cocktails/{id}/ratings` | Noter |
 
 ### 4.3 Conventions à adopter
@@ -390,12 +395,13 @@ même si le déploiement est repoussé :
 Ces points ne bloquent pas la mise en place de l'environnement de développement, mais doivent être
 tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
 
-2. **« Mon Bar » : un par personne ou un seul commun ?**
-   Le code implémente aujourd'hui **un bar global unique** (`BarRepository.DefaultBar`, `static`).
-   Un bar par utilisateur implique `Bar.OwnerId` et l'identification de l'appelant sur chaque requête.
+2. ~~**« Mon Bar » : un par personne ou un seul commun ?**~~ ✅ **Tranché (C2)** : un bar par
+   utilisateur (`Bar.OwnerId`), **vide** à la première visite — pas de stock d'exemple mêlé aux
+   vraies données. La faisabilité des cocktails (F4) est calculée contre le bar de l'appelant.
 
-3. **Les recettes sont-elles communes ?** Bibliothèque partagée (probable) vs privée par auteur.
-   Si partagée : qui peut éditer ou supprimer la recette d'un autre ?
+3. ~~**Les recettes sont-elles communes ?**~~ ✅ **Tranché (C2)** : bibliothèque partagée, tout le
+   monde voit toutes les recettes ; **seul l'auteur** (`Cocktail.AuthorId`) les modifie et les
+   supprime. Les recettes d'origine (seed, sans auteur) sont en lecture seule pour tous.
 
 4. **Les notes sont-elles par utilisateur ?** Si oui : moyenne affichée + note personnelle.
    Sinon la fonctionnalité perd son sens à 5 personnes.
@@ -531,7 +537,8 @@ semblent venir de la même IP et la limitation des tentatives bloque tout le mon
 
 **Limites connues** : les comptes ne sont pas persistés (modifier un mot de passe = changer la
 configuration et redémarrer) ; pas de changement de mot de passe par l'utilisateur ; la limitation
-des tentatives est par IP, pas par compte.
+des tentatives est par IP, pas par compte. Renommer l'identifiant d'un compte change son `Id` : il
+perd son bar et la paternité de ses recettes (qui deviennent orphelines, donc non modifiables).
 
 ---
 
@@ -568,8 +575,8 @@ Branche : `feat/mon-bar`, rebasée sur le lot A.
 | Étape | Contenu |
 |-------|---------|
 | **C1** | ~~Modèle `User` + auth back réelle + CORS restreint~~ ✅ livré avec F6 (cookie plutôt que JWT, cf. §8). `Utilisateur.Id` est dérivé de l'identifiant, donc stable d'un redémarrage à l'autre : prêt pour C2 |
-| **C2** | `Bar.OwnerId` / `Cocktail.AuthorId` selon les réponses à §6.1 |
-| **C3** | ~~Création / édition de recette (F5)~~ ✅ livrée avant le lot C. Reste à y ajouter l'auteur (`Cocktail.AuthorId`), la règle « seul l'auteur modifie » et la suppression. Formulaire en *Reactive Forms* et non en *Signal Forms* : les composants OptimusUI sont des `ControlValueAccessor`, et Mon Bar comme la connexion utilisent déjà les *Reactive Forms* |
+| **C2** | ✅ `Bar.OwnerId` (un bar par utilisateur, vide au départ) et `Cocktail.AuthorId`. Les handlers obtiennent l'appelant par `IUtilisateurCourant` (lu dans la session, jamais dans le corps de la requête). Détail de recette : `auteur` + `modifiable` ; front : « Modifier » et « Supprimer » (avec confirmation) visibles pour l'auteur seul, page d'édition d'une recette d'autrui remplacée par une explication. 7 tests d'intégration à deux comptes, vérifiés par mutation |
+| **C3** | ~~Création / édition de recette (F5)~~ ✅ livrée avant le lot C ; auteur, règle « seul l'auteur modifie » et suppression ✅ ajoutés avec C2. Formulaire en *Reactive Forms* et non en *Signal Forms* : les composants OptimusUI sont des `ControlValueAccessor`, et Mon Bar comme la connexion utilisent déjà les *Reactive Forms* |
 | **C4** | Notes (F7) et recherche (F8) |
 | **C5** | Images (F9) |
 

@@ -39,8 +39,17 @@ public class DomainExceptionHandler(IProblemDetailsService problemDetailsService
             {
                 Status = status,
                 Title = title,
-                Detail = exception.Message
+                Detail = MessagePourLUtilisateur(exception)
             }
         });
     }
+
+    /// <summary>
+    /// <see cref="ArgumentException.Message"/> ajoute « (Parameter 'xxx') » au texte : utile en
+    /// journal, déroutant affiché tel quel dans un formulaire. On le retire du détail renvoyé.
+    /// </summary>
+    private static string MessagePourLUtilisateur(Exception exception) =>
+        exception is ArgumentException { ParamName: { } parametre } argument
+            ? argument.Message.Replace($" (Parameter '{parametre}')", string.Empty)
+            : exception.Message;
 }

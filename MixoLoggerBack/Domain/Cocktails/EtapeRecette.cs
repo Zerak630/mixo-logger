@@ -12,8 +12,10 @@ public class EtapeRecette : IEntity
     public EtapeRecette(string description, int ordre)
     {
         Id = Guid.NewGuid();
-        Description = description
-            ?? throw new ArgumentNullException(nameof(description), "La description de l'étape ne peut pas être nulle");
+        ArgumentNullException.ThrowIfNull(description, nameof(description));
+        if (string.IsNullOrWhiteSpace(description))
+            throw new ArgumentException("Une étape de préparation ne peut pas être vide.", nameof(description));
+        Description = description.Trim();
         if (ordre < 1)
             throw new ArgumentOutOfRangeException(nameof(ordre), "L'ordre de l'étape doit être supérieur ou égal à 1");
         Ordre = ordre;

@@ -5,32 +5,28 @@ using MediatR;
 
 namespace Application.Cocktails.Commands;
 
-public class CreateCocktailCommand : IRequest<Guid>
+public class CreateCocktailCommand : IRequest<CocktailDetailDto>
 {
-	public required string Name { get; set; }
-	public string? Description { get; set; }
-	public List<CocktailIngredientDto> Ingredients { get; set; } = [];
-	public List<EtapeRecette> Etapes { get; set; } = [];
+    public required RecetteSaisie Recette { get; init; }
 }
 
 public class CreateCocktailCommandHandler(
-	ICocktailRepository cocktailRepository,
-	IIngredientRepository ingredientRepository
-) : IRequestHandler<CreateCocktailCommand, Guid>
+    ICocktailRepository cocktailRepository,
+    IIngredientRepository ingredientRepository
+) : IRequestHandler<CreateCocktailCommand, CocktailDetailDto>
 {
-	public async Task<Guid> Handle(CreateCocktailCommand command, CancellationToken cancellationToken = default)
-	{
-		// Récupère les ingrédients depuis le repository
-		var ingredients = await Task.WhenAll(command.Ingredients.Select(async dto =>
-		{
-			Ingredient ingredient = await ingredientRepository.GetByIdAsync(dto.IngredientId)
-				?? throw new Exception($"Ingrédient introuvable: {dto.IngredientId}");
+    public async Task<CocktailDetailDto> Handle(CreateCocktailCommand command, CancellationToken cancellationToken)
+    {
+        RecetteSaisie saisie = command.Recette
+            ?? throw new ArgumentException("La recette est obligatoire.", nameof(command));
 
-			return new CocktailIngredient(ingredient, dto.Quantity, UniteVolume.FromString(dto.Unit));
-		}));
+        await saisie.VerifierNomDisponibleAsync(cocktailRepository);
 
-		var cocktail = new Cocktail(command.Name, ingredients, command.Etapes, command.Description);
-		await cocktailRepository.AddAsync(cocktail);
-		return cocktail.Id;
-	}
+        Cocktail cocktail = await saisie.ConstruireAsync(ingredientRepository,
+            composants => new Cocktail(saisie.Name, composants, saisie.Etapes(), saisie.Description));
+
+        await cocktailRepository.AddAsync(cocktail);
+
+        return new CocktailDetailDto(cocktail);
+    }
 }

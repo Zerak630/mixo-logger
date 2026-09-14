@@ -11,7 +11,7 @@ public class CocktailRepository : ICocktailRepository
 		new Cocktail("Mojito",
 		[
 			new(IngredientReferentiel.Resolve("Rhum"), 50, UniteVolume.Mililitre),
-			new(IngredientReferentiel.Resolve("Menthe"), 10, UniteVolume.Mililitre),
+			new(IngredientReferentiel.Resolve("Menthe"), 6, Dose.Feuille),
 			new(IngredientReferentiel.Resolve("Citron vert"), 20, UniteVolume.Mililitre),
 			new(IngredientReferentiel.Resolve("Sucre"), 15, UniteVolume.Mililitre),
 			new(IngredientReferentiel.Resolve("Eau gazeuse"), 100, UniteVolume.Mililitre)
@@ -69,8 +69,8 @@ public class CocktailRepository : ICocktailRepository
 			new(IngredientReferentiel.Resolve("Vodka"), 45, UniteVolume.Mililitre),
 			new(IngredientReferentiel.Resolve("Jus de tomate"), 90, UniteVolume.Mililitre),
 			new(IngredientReferentiel.Resolve("Jus de citron"), 15, UniteVolume.Mililitre),
-			new(IngredientReferentiel.Resolve("Sauce Worcestershire"), 2, UniteVolume.Mililitre),
-			new(IngredientReferentiel.Resolve("Tabasco"), 1, UniteVolume.Mililitre)
+			new(IngredientReferentiel.Resolve("Sauce Worcestershire"), 3, Dose.Trait),
+			new(IngredientReferentiel.Resolve("Tabasco"), 2, Dose.Trait)
 		],
 			EtapeRecette.FromOrderedList([
 				"Verser tous les ingrédients dans un verre avec de la glace.",
@@ -108,8 +108,25 @@ public class CocktailRepository : ICocktailRepository
 		return Task.FromResult(result);
 	}
 
+	/// <summary>
+	/// Substitue la recette d'un bloc : <see cref="Cocktail"/> étant immuable, une lecture
+	/// concurrente voit l'ancienne version ou la nouvelle, jamais un mélange des deux.
+	/// </summary>
+	/// <remarks>
+	/// Pas de contrôle de version comme pour le bar : deux éditions simultanées de la même
+	/// recette gardent la dernière. Acceptable à 5 utilisateurs, à revoir avec la persistance.
+	/// </remarks>
 	public Task UpdateAsync(Cocktail cocktail)
 	{
-		throw new NotImplementedException();
+		ArgumentNullException.ThrowIfNull(cocktail);
+
+		if (!_store.TryGetValue(cocktail.Id, out Cocktail? actuel))
+			throw new KeyNotFoundException($"Cocktail with ID {cocktail.Id} not found.");
+
+		// Ne peut échouer que si une autre écriture s'est glissée entre la lecture et la substitution.
+		if (!_store.TryUpdate(cocktail.Id, cocktail, actuel))
+			throw new ConflitDeConcurrenceException("La recette a été modifiée entre-temps. Recharge-la puis recommence.");
+
+		return Task.CompletedTask;
 	}
 }

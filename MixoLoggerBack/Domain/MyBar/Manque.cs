@@ -13,4 +13,5 @@ public enum RaisonManque
 }
 
 /// <summary>Un ingrédient qui manque pour préparer une commande, et pourquoi.</summary>
-public record Manque(Ingredient Ingredient, RaisonManque Raison, Volume Requis);
+/// <param name="Requis">Volume total demandé, ou <c>null</c> si la recette ne l'exprime qu'en décompte.</param>
+public record Manque(Ingredient Ingredient, RaisonManque Raison, Volume? Requis);

@@ -127,11 +127,11 @@ public class Bar : IEntity
 
         List<Manque> manques = [];
 
-        foreach ((Ingredient ingredient, Volume requis) in Cumuler(commande))
+        foreach ((Ingredient ingredient, Volume? requis) in Cumuler(commande))
         {
             if (!_stock.TryGetValue(ingredient, out LigneStock? ligne))
                 manques.Add(new Manque(ingredient, RaisonManque.Absent, requis));
-            else if (!ligne.Couvre(requis))
+            else if (requis is not null && !ligne.Couvre(requis))
                 manques.Add(new Manque(ingredient, RaisonManque.Insuffisant, requis));
         }
 
@@ -158,16 +158,22 @@ public class Bar : IEntity
             throw new InvalidOperationException($"Commande impossible : {detail}.");
         }
 
-        foreach ((Ingredient ingredient, Volume requis) in Cumuler(lignes))
+        foreach ((Ingredient ingredient, Volume? requis) in Cumuler(lignes))
         {
-            _stock[ingredient] = _stock[ingredient].Retirer(requis);
+            // Un décompte (« 6 feuilles ») ne se retire pas : le bar ne suit que des volumes.
+            if (requis is not null)
+                _stock[ingredient] = _stock[ingredient].Retirer(requis);
         }
     }
 
-    /// <summary>Somme les volumes réclamés par ingrédient sur toute la commande.</summary>
-    private static Dictionary<Ingredient, Volume> Cumuler(IEnumerable<CommandeCocktail> commande)
+    /// <summary>
+    /// Besoins par ingrédient sur toute la commande : le volume total réclamé, ou
+    /// <c>null</c> quand l'ingrédient n'est demandé qu'en décompte — sa seule présence
+    /// suffit alors (cf. <see cref="Dose"/>).
+    /// </summary>
+    private static Dictionary<Ingredient, Volume?> Cumuler(IEnumerable<CommandeCocktail> commande)
     {
-        Dictionary<Ingredient, Volume> besoins = [];
+        Dictionary<Ingredient, Volume?> besoins = [];
 
         foreach (CommandeCocktail ligne in commande)
         {
@@ -175,11 +181,12 @@ public class Bar : IEntity
 
             foreach (CocktailIngredient composant in ligne.Cocktail.Ingredients)
             {
-                Volume requis = composant.Volume * ligne.Quantite;
+                Volume? requis = composant.Volume is null ? null : composant.Volume * ligne.Quantite;
 
-                besoins[composant.Ingredient] = besoins.TryGetValue(composant.Ingredient, out Volume? deja)
-                    ? deja + requis
-                    : requis;
+                if (!besoins.TryGetValue(composant.Ingredient, out Volume? deja))
+                    besoins[composant.Ingredient] = requis;
+                else if (requis is not null)
+                    besoins[composant.Ingredient] = deja is null ? requis : deja + requis;
             }
         }
 

@@ -425,6 +425,7 @@ public class BarTests
 		Assert.Empty(bar.Manques(cocktail));
 		var manque = Assert.Single(bar.Manques(cocktail, quantite: 2));
 		Assert.Equal(RaisonManque.Insuffisant, manque.Raison);
+		Assert.NotNull(manque.Requis);
 		Assert.Equal(100d, manque.Requis.EnMillilitres, precision: 10);
 	}
 
@@ -466,5 +467,69 @@ public class BarTests
 
 		Assert.Equal(1, enumerations);
 		Assert.Equal(60d, bar.Stock[rhum].Volume!.Value, precision: 10);
+	}
+
+	// ------------------------------------------------------------------
+	// F5 — doses en décompte (« 6 feuilles », « 2 traits ») : la présence
+	// dans le bar suffit, rien n'est retiré du stock.
+	// ------------------------------------------------------------------
+
+	[Fact]
+	public void Manques_Decompte_IngredientPresent_NeManquePas()
+	{
+		var menthe = new Ingredient("Menthe");
+		var bar = new Bar();
+		bar.AddIngredient(menthe, Ml(5));
+
+		Assert.Empty(bar.Manques(UnCocktailAvec(new CocktailIngredient(menthe, 50, Dose.Feuille)), quantite: 10));
+	}
+
+	[Fact]
+	public void Manques_Decompte_IngredientAbsent_ManqueSansVolumeRequis()
+	{
+		var bar = new Bar();
+
+		var manque = Assert.Single(bar.Manques(UnCocktailAvec(new CocktailIngredient(new Ingredient("Angostura"), 2, Dose.Trait))));
+
+		Assert.Equal(RaisonManque.Absent, manque.Raison);
+		Assert.Null(manque.Requis);
+	}
+
+	[Fact]
+	public void MakeCocktails_Decompte_NeRetireRienDuStock()
+	{
+		var rhum = new Ingredient("Rhum blanc");
+		var menthe = new Ingredient("Menthe");
+		var bar = new Bar();
+		bar.AddIngredient(rhum, Ml(200));
+		bar.AddIngredient(menthe, Ml(30));
+
+		var mojito = UnCocktailAvec(
+			new CocktailIngredient(rhum, 50, UniteVolume.Mililitre),
+			new CocktailIngredient(menthe, 6, Dose.Feuille));
+
+		bar.MakeCocktail(mojito, quantite: 2);
+
+		Assert.Equal(100d, bar.Stock[rhum].Volume!.Value, precision: 10);
+		Assert.Equal(30d, bar.Stock[menthe].Volume!.Value, precision: 10);
+	}
+
+	[Fact]
+	public void Manques_MemeIngredientEnVolumeEtEnDecompte_CumuleSeulementLeVolume()
+	{
+		// Deux recettes différentes dans une même commande : l'une exprime l'angostura en
+		// volume, l'autre en traits. Seul le volume se compare au stock.
+		var angostura = new Ingredient("Angostura");
+		var bar = new Bar();
+		bar.AddIngredient(angostura, Ml(10));
+
+		var enVolume = UnCocktailAvec(new CocktailIngredient(angostura, 8, UniteVolume.Mililitre));
+		var enTraits = UnCocktailAvec(new CocktailIngredient(angostura, 3, Dose.Trait));
+
+		Assert.Empty(bar.Manques([new CommandeCocktail(enTraits), new CommandeCocktail(enVolume)]));
+
+		var manque = Assert.Single(bar.Manques([new CommandeCocktail(enTraits), new CommandeCocktail(enVolume, 2)]));
+		Assert.Equal(RaisonManque.Insuffisant, manque.Raison);
+		Assert.Equal(16d, manque.Requis!.EnMillilitres, precision: 10);
 	}
 }

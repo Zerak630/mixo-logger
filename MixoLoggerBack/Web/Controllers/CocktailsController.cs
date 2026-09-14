@@ -1,3 +1,4 @@
+using Application.Cocktails.Commands;
 using Application.Cocktails.Dtos;
 using Application.Cocktails.Queries;
 using Domain.Cocktails;
@@ -21,8 +22,33 @@ public class CocktailsController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("{Id}")]
-    public async Task<Cocktail> GetCocktail(GetCocktailByIdQuery request, CancellationToken cancellationToken = default)
+    public async Task<CocktailDetailDto> GetCocktail(GetCocktailByIdQuery request, CancellationToken cancellationToken = default)
     {
         return await mediator.Send(request, cancellationToken);
+    }
+
+    /// <summary>Unités de dose acceptées, dans l'ordre où les proposer à la saisie.</summary>
+    [HttpGet("unites")]
+    public IReadOnlyList<string> GetUnites() => Dose.Unites;
+
+    /// <summary>Crée une recette. 409 si le nom est déjà pris, 400 si le contenu est invalide.</summary>
+    [HttpPost]
+    public async Task<ActionResult<CocktailDetailDto>> CreateCocktail(
+        [FromBody] RecetteSaisie recette,
+        CancellationToken cancellationToken = default)
+    {
+        CocktailDetailDto cree = await mediator.Send(new CreateCocktailCommand { Recette = recette }, cancellationToken);
+
+        return CreatedAtAction(nameof(GetCocktail), new { Id = cree.Id }, cree);
+    }
+
+    /// <summary>Remplace le contenu d'une recette existante.</summary>
+    [HttpPut("{id:guid}")]
+    public async Task<CocktailDetailDto> UpdateCocktail(
+        Guid id,
+        [FromBody] RecetteSaisie recette,
+        CancellationToken cancellationToken = default)
+    {
+        return await mediator.Send(new UpdateCocktailCommand { Id = id, Recette = recette }, cancellationToken);
     }
 }

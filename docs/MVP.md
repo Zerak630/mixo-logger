@@ -3,7 +3,7 @@
 > Bibliothèque de cocktails pour mixologues et amateurs de soirées.
 > Document de référence : périmètre, stack, modèle de données, contrat d'API, décisions ouvertes.
 >
-> Dernière mise à jour : 2026-09-13
+> Dernière mise à jour : 2026-09-14
 
 ---
 
@@ -35,7 +35,7 @@
 | F3 | Gérer « Mon Bar » (stock d'ingrédients) | Must | ✅ Écran complet : ajout avec autocomplétion, niveau par ligne, retrait, volume exact optionnel |
 | F4 | Savoir quels cocktails sont réalisables avec le stock | Must | ✅ Badge sur chaque carte (réalisable / ce qui manque), filtre « Seulement ce que je peux faire », tri réalisables d'abord |
 | F5 | Ajouter / éditer une recette | Must | ✅ Création et édition (`/cocktails/new`, `/cocktails/:id/edit`), doses en volume ou en décompte. **Suppression reportée au lot C** (sans auteur, n'importe qui pourrait effacer la recette d'un autre) |
-| F6 | Se connecter | Must | 🟡 Mock front uniquement (utilisateur en dur) |
+| F6 | Se connecter | Must | ✅ Connexion / déconnexion réelles, cookie de session HttpOnly, toute l'application protégée. Comptes en configuration hors dépôt (§10.2) |
 | F7 | Noter un cocktail (⭐) | Should | ❌ Non modélisé |
 | F8 | Recherche / filtres | Should | ❌ Non implémenté |
 | F9 | Photo de cocktail | Could | ❌ Non traité (stockage non décidé) |
@@ -64,7 +64,7 @@
 | Médiateur | **MediatR 13** (CQRS : Commands / Queries) | ✅ En place |
 | API | REST + Swagger / OpenAPI | ✅ En place |
 | Persistance | **Aucune** (repositories `static` en mémoire) — choix assumé, cf. F10 | ✅ Conforme |
-| Authentification | À implémenter côté back (§8) | 🔺 Mock front en dur |
+| Authentification | Cookie de session ASP.NET Core, sans Identity complet (§8) | ✅ F6 |
 | Hébergement | Serveur centralisé — **repoussé** | ❌ Rien |
 
 #### Notes sur les versions
@@ -101,12 +101,15 @@
 ```
 MixoLoggerBack/
 ├── Domain/          # Entités, value objects, interfaces de repositories — aucune dépendance
-│   ├── Cocktails/   # Cocktail (aggregate), CocktailIngredient, Ingredient, EtapeRecette, Volume
-│   ├── MyBar/       # Bar, Ustensils
+│   ├── Cocktails/   # Cocktail (aggregate), CocktailIngredient, Dose, Ingredient, EtapeRecette, Volume
+│   ├── MyBar/       # Bar, LigneStock, Manque, Ustensils
+│   ├── Utilisateurs/# Utilisateur (F6)
 │   └── Units/       # VolumeConverter
 ├── Application/     # Use cases MediatR (Commands / Queries) + DTOs
-├── Infrastructure/  # Implémentations des repositories (aujourd'hui : en mémoire)
-└── Web/             # Controllers, Program.cs, Swagger, CORS
+├── Infrastructure/  # Repositories en mémoire, référentiel d'ingrédients, hachage des mots de passe
+├── Web/             # Controllers, Program.cs, Swagger, sécurité (cookie, CORS, limitation)
+├── Domain.Tests/    # Tests unitaires du domaine
+└── Web.Tests/       # Tests d'intégration : API complète en mémoire (authentification)
 ```
 
 Règle de dépendance : `Web → Application → Domain`, `Infrastructure → Domain`.
@@ -116,13 +119,18 @@ Règle de dépendance : `Web → Application → Domain`, `Infrastructure → Do
 
 ```
 MixoLoggerFront/src/app/
-├── core/         # AuthService, UserService, ConfigService, http-interceptor
-├── features/     # cocktails/ (list, detail, service, resolver, routes), mybar/
-├── components/   # cocktail-card, login-modal
+├── core/         # AuthService, UserService (état de session), gardes de session, ConfigService, http-interceptor
+├── features/     # connexion/, cocktails/ (list, detail, edition, service, resolver, routes), mybar/
+├── components/   # cocktail-card
 ├── models/       # types partagés
-├── styles/       # customTheme.ts (preset de thème — PrimeNG aujourd'hui, OptimusUI après A3)
-└── utils/        # toggle-signal
+├── styles/       # customTheme.ts (preset de thème OptimusUI)
+└── utils/        # toggle-signal, normaliser-nom, recherche-ingredients, libelle-dose
 ```
+
+**Session côté front** : l'état (`UserService`) n'est qu'un reflet du cookie HttpOnly, illisible par le
+JavaScript. Au démarrage, `GET /api/auth/moi` le restaure avant la première navigation ; le garde
+`sessionRequise` renvoie vers `/connexion?retour=…` ; l'intercepteur envoie le cookie
+(`withCredentials`) et renvoie vers la connexion sur tout `401` (session expirée).
 
 L'URL de l'API est lue depuis `src/env/env.local.json` (`apiUrl`), chargée par `ConfigService`.
 
@@ -225,6 +233,13 @@ Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
 | `GET` | `/api/cocktails/unites` | — | `string[]` | `mL`, `cL`, `dL`, `L`, `piece`, `feuille`, `trait`, `pincee` |
 | `POST` | `/api/cocktails` | `RecetteSaisie` | `201` + `CocktailDetailDto` | `{ name, description?, ingredients: [{ name, valeur, unite }], etapes: string[] }` ; ingrédients par nom (alias compris, créés si inconnus **une fois la recette validée**) ; `400` contenu invalide, `409` nom déjà pris |
 | `PUT` | `/api/cocktails/{id}` | `RecetteSaisie` | `CocktailDetailDto` | Remplace tout le contenu ; mêmes règles ; `404` si absent. Pas de contrôle de version : deux éditions simultanées gardent la dernière |
+| `POST` | `/api/auth/connexion` | `{ identifiant, motDePasse }` | `UtilisateurDto` + cookie | **Anonyme.** `401` même réponse pour identifiant inconnu et mauvais mot de passe ; `429` au-delà de 5 essais par minute et par IP |
+| `POST` | `/api/auth/deconnexion` | — | `204` | **Anonyme** (une session expirée doit pouvoir se fermer) |
+| `GET` | `/api/auth/moi` | — | `UtilisateurDto` | `{ id, identifiant, nomAffiche }` ; `401` sans session |
+
+> **Toute l'API exige une session** (politique d'autorisation par défaut), sauf ce qui est marqué
+> *anonyme* ci-dessus et `/ping`. Un endpoint ajouté sans y penser est donc protégé, pas public.
+> Sans session : `401` en `ProblemDetails`, jamais de redirection.
 | `GET` | `/api/bars` | — | `MyBarDto` | Bar unique global |
 | `GET` | `/api/ingredients` | — | `IngredientReferenceDto[]` | Référentiel trié par nom, alias normalisés inclus — alimente l'autocomplétion |
 | `POST` | `/api/bars/MakeCocktails` | `CocktailBarOrder[]` | `MyBarDto` | Tout ou rien ; `409` si infaisable |
@@ -247,7 +262,6 @@ quel dans les formulaires.
 |-------|-------|-------|
 | `DELETE` | `/api/cocktails/{id}` | Supprimer une recette — avec le lot C, réservé à l'auteur |
 | `POST` | `/api/cocktails/{id}/ratings` | Noter |
-| `POST` | `/api/auth/login` | S'authentifier |
 
 ### 4.3 Conventions à adopter
 
@@ -306,9 +320,9 @@ accents et garder `#F5F5F5` pour le texte.
 | Détail d'un cocktail | `/cocktails/:id` | ✅ ingrédients, étapes, nombre de verres, préparation |
 | Mon Bar | `/my_bar` | ✅ gestion complète du stock (F3) |
 | Ajout / édition de recette | `/cocktails/new`, `/cocktails/:id/edit` | ✅ (F5) |
-| Connexion | modale | 🟡 mock |
+| Connexion | `/connexion` | ✅ seule page accessible sans session (F6) |
 
-Composants clés : `cocktail-card` (image, nom, note), `login-modal`.
+Composants clés : `cocktail-card` (image, nom, note).
 
 **Écran Mon Bar (F3)** — comportements retenus :
 
@@ -425,8 +439,10 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
   L'unité de saisie reste portée par l'instance. Constat d'origine : `Volume(100, mL) == Volume(10, cL)` vaut `false` alors
   que les deux volumes sont égaux. Les opérateurs `<` / `>` convertissent bien, mais pas l'égalité
   générée par le `record`.
-- **B4 — CORS `AllowAnyOrigin` + aucune auth côté back.** Acceptable en développement local,
-  à restreindre dès que l'API est exposée hors de la machine.
+- **B4 — CORS `AllowAnyOrigin` + aucune auth côté back.** ✅ **Corrigé (F6)** : CORS restreint aux
+  origines de `Front:Origines` (par défaut `http://localhost:4200`), avec cookies ; authentification
+  réelle et API entièrement protégée. Constat d'origine : acceptable en développement local, à
+  restreindre dès que l'API est exposée hors de la machine.
 - **B5 — Les controllers renvoient des types nus** (`Cocktail`, `bool`) : pas de 404, pas de 400,
   pas de message d'erreur exploitable côté front. ✅ **Corrigé** : `DomainExceptionHandler` produit des
   `ProblemDetails`, et plus aucun endpoint n'expose d'entité de domaine — `BarsController` renvoie des
@@ -435,11 +451,12 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
   `POST /api/cocktails` renvoie un `ActionResult<T>` (pour le `201 Created`) ; les autres actions
   renvoient le DTO nu, les erreurs passant par le gestionnaire d'exceptions.
 - **B6 — Couverture de test partielle.** ✅ Résolu côté back : `Domain.Tests` existe et couvre `Bar`,
-  `Cocktail`, `EtapeRecette`, `Volume` et `VolumeConverter` en xUnit. Restent non testées les couches
-  `Application` (handlers MediatR) et `Web`, ainsi que **tout le front** : Karma/Jasmine est installé
-  sans aucun test réel.
-- **B7 — Authentification factice.** `AuthService` compare à `Testboi` / `passBoi` en dur dans le
-  bundle front. À remplacer avant toute exposition réseau.
+  `Cocktail`, `EtapeRecette`, `Volume` et `VolumeConverter` en xUnit. Depuis F6, `Web.Tests` fait tourner
+  l'API complète en mémoire (`WebApplicationFactory`) et couvre l'authentification de bout en bout.
+  Restent peu ou pas testés : les handlers `Application` hors authentification, et **tout le front**
+  (Karma/Jasmine installé, aucun test réel).
+- **B7 — Authentification factice.** ✅ **Corrigé (F6)** : l'identifiant et le mot de passe en dur du
+  bundle front ont disparu avec la modale ; la vérification se fait côté API, mots de passe hachés.
 - **B8 — Les projets bibliothèque utilisent `Microsoft.NET.Sdk.Web`.** `Domain`, `Application` et
   `Infrastructure` sont déclarés avec le SDK Web + `<OutputType>Library</OutputType>`, ce qui leur
   fait référencer tout le framework ASP.NET Core et génère des `Properties/launchSettings.json`
@@ -495,14 +512,26 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
 
 ## 8. Sécurité
 
-« Pas de RGPD » ne veut pas dire « pas de sécurité ». Minimum pour un déploiement hors localhost :
+« Pas de RGPD » ne veut pas dire « pas de sécurité ». ✅ **Mis en place avec F6** :
 
-- Mots de passe **hashés** (`PasswordHasher<T>` d'ASP.NET Core suffit ; Identity complet est
-  surdimensionné pour 5 comptes créés à la main).
-- Jeton JWT signé et court, avec refresh — ou cookie `HttpOnly` `SameSite=Strict` si front et API
-  partagent le domaine.
-- CORS restreint à l'origine du front.
-- Comptes créés par l'administrateur (pas d'inscription publique) : à 5 utilisateurs, un seed suffit.
+| Mesure | Mise en œuvre |
+|--------|---------------|
+| Mots de passe hachés | PBKDF2 via `PasswordHasher<T>` d'ASP.NET Core Identity, sans le reste d'Identity. Hachés au démarrage, jamais conservés en clair |
+| Session | Cookie `mixo_session` : `HttpOnly` (hors de portée d'une faille XSS), `SameSite=Strict` (CSRF), `Secure` hors développement, 14 jours glissants. Pas de JWT, donc pas de rafraîchissement à gérer |
+| Tout protégé par défaut | Politique d'autorisation de repli : un endpoint est privé sauf `[AllowAnonymous]` explicite |
+| Comptes | Déclarés en configuration **hors dépôt**, pas d'inscription publique (§10.2). Configuration invalide (identifiant vide ou en double, mot de passe < 12 caractères) : l'API refuse de démarrer. Compte retiré : sa session est rejetée à la requête suivante |
+| Énumération des comptes | Même message et même durée de réponse pour un identifiant inconnu et un mauvais mot de passe |
+| Force brute | 5 tentatives de connexion par minute et par IP (`Securite:TentativesDeConnexionParMinute`), `429` au-delà |
+| CORS | Restreint aux origines de `Front:Origines` |
+| Redirection après connexion | Le paramètre `?retour=` n'accepte qu'un chemin interne (pas de `//site` ni d'URL absolue) |
+
+**Avant tout déploiement**, reste à faire : HTTPS (le cookie `Secure` l'exige hors développement) et,
+derrière un reverse proxy, la configuration des en-têtes transférés — sans elle, toutes les requêtes
+semblent venir de la même IP et la limitation des tentatives bloque tout le monde à la fois.
+
+**Limites connues** : les comptes ne sont pas persistés (modifier un mot de passe = changer la
+configuration et redémarrer) ; pas de changement de mot de passe par l'utilisateur ; la limitation
+des tentatives est par IP, pas par compte.
 
 ---
 
@@ -538,7 +567,7 @@ Branche : `feat/mon-bar`, rebasée sur le lot A.
 
 | Étape | Contenu |
 |-------|---------|
-| **C1** | Modèle `User` + auth back réelle (hash + JWT) + CORS restreint — lève B4 et B7 |
+| **C1** | ~~Modèle `User` + auth back réelle + CORS restreint~~ ✅ livré avec F6 (cookie plutôt que JWT, cf. §8). `Utilisateur.Id` est dérivé de l'identifiant, donc stable d'un redémarrage à l'autre : prêt pour C2 |
 | **C2** | `Bar.OwnerId` / `Cocktail.AuthorId` selon les réponses à §6.1 |
 | **C3** | ~~Création / édition de recette (F5)~~ ✅ livrée avant le lot C. Reste à y ajouter l'auteur (`Cocktail.AuthorId`), la règle « seul l'auteur modifie » et la suppression. Formulaire en *Reactive Forms* et non en *Signal Forms* : les composants OptimusUI sont des `ControlValueAccessor`, et Mon Bar comme la connexion utilisent déjà les *Reactive Forms* |
 | **C4** | Notes (F7) et recherche (F8) |
@@ -602,6 +631,42 @@ cd MixoLoggerFront && npm ci && npm start
 
 L'URL de l'API consommée par le front se configure dans `MixoLoggerFront/src/env/env.local.json`
 (`apiUrl`). Sur un serveur centralisé, ce fichier devra être surchargé par environnement.
+
+#### Créer les comptes (F6)
+
+**Sans compte configuré, personne ne peut se connecter** : l'API démarre, mais le signale dans son
+journal (« Aucun compte configuré »). Les comptes ne sont **jamais** dans le dépôt.
+
+En local, dans les *user-secrets* du projet `Web` (stockés dans le profil Windows, hors du dépôt).
+Un compte = trois clés, numérotées à partir de 0 ; remplacer les valeurs d'exemple :
+
+```bash
+dotnet user-secrets set "Comptes:0:Identifiant" "identifiant-du-compte" --project MixoLoggerBack/Web
+```
+
+```bash
+dotnet user-secrets set "Comptes:0:NomAffiche" "Nom affiché" --project MixoLoggerBack/Web
+```
+
+```bash
+dotnet user-secrets set "Comptes:0:MotDePasse" "au-moins-12-caracteres" --project MixoLoggerBack/Web
+```
+
+Puis `Comptes:1:…` pour le compte suivant. Vérifier ce qui est déclaré :
+
+```bash
+dotnet user-secrets list --project MixoLoggerBack/Web
+```
+
+Sur le serveur, les mêmes clés en variables d'environnement, avec un double souligné comme séparateur :
+`Comptes__0__Identifiant`, `Comptes__0__MotDePasse`… Redémarrer l'API après toute modification.
+
+Règles vérifiées au démarrage, qui refuse de se lancer sinon : identifiant non vide et unique (casse et
+accents ignorés), mot de passe d'au moins 12 caractères. `NomAffiche` est facultatif (l'identifiant sert
+alors de nom).
+
+Autres réglages, facultatifs : `Front:Origines` (origines autorisées par CORS, par défaut
+`http://localhost:4200`) et `Securite:TentativesDeConnexionParMinute` (par défaut 5).
 
 ### 10.3 Migration PrimeNG → OptimusUI
 

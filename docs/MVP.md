@@ -36,8 +36,8 @@
 | F4 | Savoir quels cocktails sont réalisables avec le stock | Must | ✅ Badge sur chaque carte (réalisable / ce qui manque), filtre « Seulement ce que je peux faire », tri réalisables d'abord |
 | F5 | Ajouter / éditer une recette | Must | ✅ Création, édition (`/cocktails/new`, `/cocktails/:id/edit`) et suppression, doses en volume ou en décompte. Modification et suppression réservées à l'auteur (lot C2) |
 | F6 | Se connecter | Must | ✅ Connexion / déconnexion réelles, cookie de session HttpOnly, toute l'application protégée. Comptes en configuration hors dépôt (§10.2) |
-| F7 | Noter un cocktail (⭐) | Should | ❌ Non modélisé |
-| F8 | Recherche / filtres | Should | ❌ Non implémenté |
+| F7 | Noter un cocktail (⭐) | Should | ✅ Note de 1 à 5 par utilisateur (modifiable, retirable), moyenne et nombre de notes sur la carte et le détail |
+| F8 | Recherche / filtres | Should | ✅ Recherche par nom, description ou ingrédient (alias compris, sans accents ni casse, tous les mots requis) ; filtres « Seulement ce que je peux faire », « Mes recettes », note minimale |
 | F9 | Photo de cocktail | Could | ❌ Non traité (stockage non décidé) |
 | F10 | Persistance des données entre deux redémarrages | Later | ⏸️ Volontairement repoussée — tout est en mémoire |
 
@@ -206,16 +206,19 @@ erDiagram
 
 ### 3.2 À ajouter pour couvrir les objectifs
 
-Les objectifs mentionnent « noter » et « partager » : **ni l'un ni l'autre n'est modélisé**.
+Les objectifs mentionnent « noter » et « partager » : la notation est en place (C4), le partage
+n'est pas modélisé.
 
 ```
-USER      { Id, Username, PasswordHash, DisplayName, CreatedAt }
-RATING    { Id, CocktailId, UserId, Score (1-5), Comment?, CreatedAt }   -- unicité (CocktailId, UserId)
 COCKTAIL  + CreatedAt, ImageUrl?
 ```
 
-Déjà en place (lot C2) : `Bar.OwnerId` (un bar par utilisateur) et `Cocktail.AuthorId` (`null` pour
-les recettes d'origine, en lecture seule). `Utilisateur` existe depuis F6, sans persistance.
+Déjà en place :
+- `Utilisateur` (F6, sans persistance) ; `Bar.OwnerId` (un bar par utilisateur) et `Cocktail.AuthorId`
+  (`null` pour les recettes d'origine, en lecture seule) — lot C2.
+- `Note { CocktailId, UtilisateurId, Valeur (1-5), NoteeLe }`, une par couple cocktail / utilisateur :
+  noter à nouveau remplace. `ResumeNotes` calcule la moyenne (arrondie au dixième), le nombre de notes
+  et la note de l'utilisateur. Pas de commentaire. L'auteur peut noter sa propre recette — lot C4.
 
 Décisions à trancher avant d'écrire les migrations : cf. §6.
 
@@ -230,12 +233,14 @@ Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
 | Verbe | Route | Corps | Retour | Notes |
 |-------|-------|-------|--------|-------|
 | `GET` | `/ping` | — | `"pong"` | Healthcheck |
-| `GET` | `/api/cocktails` | — | `CocktailResumeDto[]` | `realisable` + `manques` (`ingredient`, `raison` : `Absent` \| `Insuffisant`) évalués contre **le bar de l'utilisateur connecté** ; tri : réalisables, puis moins de manques, puis nom |
-| `GET` | `/api/cocktails/{id}` | — | `CocktailDetailDto` | `ingredients` (`ingredientId`, `name`, `valeur`, `unite`), `etapes` (`ordre`, `description`), `auteur` (nom affiché, `null` pour une recette d'origine) et `modifiable` (l'utilisateur connecté en est l'auteur) ; `404` si absent |
+| `GET` | `/api/cocktails` | — | `CocktailResumeDto[]` | `realisable` + `manques` (`ingredient`, `raison` : `Absent` \| `Insuffisant`) évalués contre **le bar de l'utilisateur connecté** ; `ingredients` (noms canoniques), `modifiable`, `notes` ; tri : réalisables, puis moins de manques, puis nom. Recherche et filtres (F8) faits côté front sur cette liste |
+| `GET` | `/api/cocktails/{id}` | — | `CocktailDetailDto` | `ingredients` (`ingredientId`, `name`, `valeur`, `unite`), `etapes` (`ordre`, `description`), `auteur` (nom affiché, `null` pour une recette d'origine), `modifiable` (l'utilisateur connecté en est l'auteur) et `notes` ; `404` si absent |
+| `PUT` | `/api/cocktails/{id}/note` | `{ valeur }` | `NotesDto` | Donne ou remplace sa note (1 à 5), ouvert à tous, recettes d'origine comprises ; `400` hors bornes, `404` si la recette n'existe pas. `NotesDto` = `{ moyenne (au dixième, null sans note), nombre, maNote (null si pas noté) }` |
+| `DELETE` | `/api/cocktails/{id}/note` | — | `NotesDto` | Retire sa note ; idempotent ; `404` si la recette n'existe pas |
 | `GET` | `/api/cocktails/unites` | — | `string[]` | `mL`, `cL`, `dL`, `L`, `piece`, `feuille`, `trait`, `pincee` |
 | `POST` | `/api/cocktails` | `RecetteSaisie` | `201` + `CocktailDetailDto` | `{ name, description?, ingredients: [{ name, valeur, unite }], etapes: string[] }` ; ingrédients par nom (alias compris, créés si inconnus **une fois la recette validée**) ; l'utilisateur connecté devient l'auteur ; `400` contenu invalide, `409` nom déjà pris |
 | `PUT` | `/api/cocktails/{id}` | `RecetteSaisie` | `CocktailDetailDto` | Remplace tout le contenu ; mêmes règles ; **`403` si l'utilisateur n'est pas l'auteur** (vérifié avant le contenu) ; `404` si absent. Pas de contrôle de version : deux éditions simultanées gardent la dernière |
-| `DELETE` | `/api/cocktails/{id}` | — | `204` | **`403` si l'utilisateur n'est pas l'auteur** ; `404` si absent ; `409` si la recette a été modifiée entre la lecture et la suppression |
+| `DELETE` | `/api/cocktails/{id}` | — | `204` | **`403` si l'utilisateur n'est pas l'auteur** ; `404` si absent ; `409` si la recette a été modifiée entre la lecture et la suppression. Ses notes sont supprimées avec elle |
 | `POST` | `/api/auth/connexion` | `{ identifiant, motDePasse }` | `UtilisateurDto` + cookie | **Anonyme.** `401` même réponse pour identifiant inconnu et mauvais mot de passe ; `429` au-delà de 5 essais par minute et par IP |
 | `POST` | `/api/auth/deconnexion` | — | `204` | **Anonyme** (une session expirée doit pouvoir se fermer) |
 | `GET` | `/api/auth/moi` | — | `UtilisateurDto` | `{ id, identifiant, nomAffiche }` ; `401` sans session |
@@ -264,9 +269,8 @@ quel dans les formulaires.
 
 ### 4.2 À ajouter
 
-| Verbe | Route | Objet |
-|-------|-------|-------|
-| `POST` | `/api/cocktails/{id}/ratings` | Noter |
+Rien pour les fonctionnalités Must et Should. Restent les photos (F9, lot C5), dont le contrat
+dépend du choix entre upload de fichiers et simple URL (§6.1, point 5).
 
 ### 4.3 Conventions à adopter
 
@@ -403,8 +407,9 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
    monde voit toutes les recettes ; **seul l'auteur** (`Cocktail.AuthorId`) les modifie et les
    supprime. Les recettes d'origine (seed, sans auteur) sont en lecture seule pour tous.
 
-4. **Les notes sont-elles par utilisateur ?** Si oui : moyenne affichée + note personnelle.
-   Sinon la fonctionnalité perd son sens à 5 personnes.
+4. ~~**Les notes sont-elles par utilisateur ?**~~ ✅ **Tranché (C4)** : oui, une note de 1 à 5 par
+   utilisateur, sans commentaire ; moyenne et nombre de notes affichés à tous, note personnelle à
+   chacun. La recherche porte sur le nom, la description et les ingrédients.
 
 5. **Images** : upload de fichiers (→ stockage disque + service de fichiers statiques) ou simple
    URL saisie à la main ? La seconde suffit largement pour un MVP.
@@ -577,7 +582,7 @@ Branche : `feat/mon-bar`, rebasée sur le lot A.
 | **C1** | ~~Modèle `User` + auth back réelle + CORS restreint~~ ✅ livré avec F6 (cookie plutôt que JWT, cf. §8). `Utilisateur.Id` est dérivé de l'identifiant, donc stable d'un redémarrage à l'autre : prêt pour C2 |
 | **C2** | ✅ `Bar.OwnerId` (un bar par utilisateur, vide au départ) et `Cocktail.AuthorId`. Les handlers obtiennent l'appelant par `IUtilisateurCourant` (lu dans la session, jamais dans le corps de la requête). Détail de recette : `auteur` + `modifiable` ; front : « Modifier » et « Supprimer » (avec confirmation) visibles pour l'auteur seul, page d'édition d'une recette d'autrui remplacée par une explication. 7 tests d'intégration à deux comptes, vérifiés par mutation |
 | **C3** | ~~Création / édition de recette (F5)~~ ✅ livrée avant le lot C ; auteur, règle « seul l'auteur modifie » et suppression ✅ ajoutés avec C2. Formulaire en *Reactive Forms* et non en *Signal Forms* : les composants OptimusUI sont des `ControlValueAccessor`, et Mon Bar comme la connexion utilisent déjà les *Reactive Forms* |
-| **C4** | Notes (F7) et recherche (F8) |
+| **C4** | ✅ Notes (F7) et recherche (F8). Recherche et filtres côté front (`utils/recherche-cocktails.ts`) : la liste complète est déjà chargée, à revoir si le catalogue dépasse quelques centaines de recettes. 19 tests domaine et intégration sur les notes, vérifiés par mutation. **Limites** : notes en mémoire comme le reste (F10) ; l'auteur peut noter sa propre recette ; une note posée pendant la suppression concurrente de la recette peut rester orpheline (invisible, sans effet) |
 | **C5** | Images (F9) |
 
 ### Lot D — Reporté

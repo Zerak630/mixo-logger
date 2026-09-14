@@ -1,10 +1,12 @@
 using Application.Cocktails.Dtos;
+using Application.Utilisateurs;
 using Domain.Cocktails;
 using Domain.Interfaces.Repositories;
 using MediatR;
 
 namespace Application.Cocktails.Commands;
 
+/// <summary>Crée une recette dont l'utilisateur connecté devient l'auteur.</summary>
 public class CreateCocktailCommand : IRequest<CocktailDetailDto>
 {
     public required RecetteSaisie Recette { get; init; }
@@ -12,7 +14,9 @@ public class CreateCocktailCommand : IRequest<CocktailDetailDto>
 
 public class CreateCocktailCommandHandler(
     ICocktailRepository cocktailRepository,
-    IIngredientRepository ingredientRepository
+    IIngredientRepository ingredientRepository,
+    IUtilisateurRepository utilisateurRepository,
+    IUtilisateurCourant utilisateurCourant
 ) : IRequestHandler<CreateCocktailCommand, CocktailDetailDto>
 {
     public async Task<CocktailDetailDto> Handle(CreateCocktailCommand command, CancellationToken cancellationToken)
@@ -23,10 +27,10 @@ public class CreateCocktailCommandHandler(
         await saisie.VerifierNomDisponibleAsync(cocktailRepository);
 
         Cocktail cocktail = await saisie.ConstruireAsync(ingredientRepository,
-            composants => new Cocktail(saisie.Name, composants, saisie.Etapes(), saisie.Description));
+            composants => new Cocktail(saisie.Name, composants, saisie.Etapes(), saisie.Description, utilisateurCourant.Id));
 
         await cocktailRepository.AddAsync(cocktail);
 
-        return new CocktailDetailDto(cocktail);
+        return await CocktailDetailDto.PourAsync(cocktail, utilisateurRepository, utilisateurCourant);
     }
 }

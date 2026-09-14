@@ -10,6 +10,9 @@ public class Bar : IEntity
     public Guid Id { get; set; }
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>L'utilisateur à qui appartient ce bar : un bar par personne (cf. docs/MVP.md §6.1).</summary>
+    public Guid OwnerId { get; }
+
     /// <summary>
     /// Version de l'état lu, pour le contrôle de concurrence optimiste : le dépôt refuse
     /// une sauvegarde faite à partir d'une version périmée (cf. docs/MVP.md §7, B2).
@@ -18,10 +21,14 @@ public class Bar : IEntity
 
     public IReadOnlyDictionary<Ingredient, LigneStock> Stock => _stock;
 
-    public Bar()
+    public Bar(Guid ownerId)
     {
+        if (ownerId == Guid.Empty)
+            throw new ArgumentException("Un bar appartient forcément à un utilisateur.", nameof(ownerId));
+
         Id = Guid.NewGuid();
         CreatedAt = DateTime.UtcNow;
+        OwnerId = ownerId;
     }
 
     /// <summary>
@@ -36,7 +43,7 @@ public class Bar : IEntity
     /// </remarks>
     public Bar Snapshot()
     {
-        Bar copie = new() { Id = Id, CreatedAt = CreatedAt, Version = Version };
+        Bar copie = new(OwnerId) { Id = Id, CreatedAt = CreatedAt, Version = Version };
 
         foreach ((Ingredient ingredient, LigneStock ligne) in _stock)
         {

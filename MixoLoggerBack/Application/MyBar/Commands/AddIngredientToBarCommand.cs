@@ -1,4 +1,5 @@
 using Application.MyBar.Dtos;
+using Application.Utilisateurs;
 using Domain.Cocktails;
 using Domain.Interfaces.Repositories;
 using Domain.MyBar;
@@ -22,7 +23,8 @@ public record VolumeInput(double Value, string Unit);
 
 public class AddIngredientToBarCommandHandler(
     IBarRepository barRepository,
-    IIngredientRepository ingredientRepository
+    IIngredientRepository ingredientRepository,
+    IUtilisateurCourant utilisateurCourant
 ) : IRequestHandler<AddIngredientToBarCommand, MyBarDto>
 {
     public async Task<MyBarDto> Handle(AddIngredientToBarCommand request, CancellationToken cancellationToken)
@@ -30,8 +32,7 @@ public class AddIngredientToBarCommandHandler(
         if (string.IsNullOrWhiteSpace(request.Name))
             throw new ArgumentException("Le nom de l'ingrédient est obligatoire.", nameof(request));
 
-        Bar bar = await barRepository.GetBar()
-            ?? throw new InvalidOperationException("Bar not found.");
+        Bar bar = await barRepository.GetForOwnerAsync(utilisateurCourant.Id);
 
         Ingredient ingredient = await ingredientRepository.GetOrCreateAsync(request.Name);
 

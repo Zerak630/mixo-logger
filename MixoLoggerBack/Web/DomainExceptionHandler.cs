@@ -1,3 +1,4 @@
+using Domain.Utilisateurs;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,6 +21,7 @@ public class DomainExceptionHandler(IProblemDetailsService problemDetailsService
     {
         (int status, string title) = exception switch
         {
+            ActionNonAutoriseeException => (StatusCodes.Status403Forbidden, "Action non autorisée"),
             KeyNotFoundException => (StatusCodes.Status404NotFound, "Ressource introuvable"),
             ArgumentException => (StatusCodes.Status400BadRequest, "Requête invalide"),
             InvalidOperationException => (StatusCodes.Status409Conflict, "Opération impossible"),

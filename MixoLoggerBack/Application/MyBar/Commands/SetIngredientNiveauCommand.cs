@@ -1,4 +1,5 @@
 using Application.MyBar.Dtos;
+using Application.Utilisateurs;
 using Domain.Cocktails;
 using Domain.Interfaces.Repositories;
 using Domain.MyBar;
@@ -15,13 +16,13 @@ public class SetIngredientNiveauCommand : IRequest<MyBarDto>
 
 public class SetIngredientNiveauCommandHandler(
     IBarRepository barRepository,
-    IIngredientRepository ingredientRepository
+    IIngredientRepository ingredientRepository,
+    IUtilisateurCourant utilisateurCourant
 ) : IRequestHandler<SetIngredientNiveauCommand, MyBarDto>
 {
     public async Task<MyBarDto> Handle(SetIngredientNiveauCommand request, CancellationToken cancellationToken)
     {
-        Bar bar = await barRepository.GetBar()
-            ?? throw new InvalidOperationException("Bar not found.");
+        Bar bar = await barRepository.GetForOwnerAsync(utilisateurCourant.Id);
 
         Ingredient ingredient = await ingredientRepository.GetByNameAsync(request.Name)
             ?? throw new KeyNotFoundException($"Ingrédient inconnu : « {request.Name} ».");

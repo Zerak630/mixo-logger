@@ -1,25 +1,29 @@
-using Domain.Cocktails;
 using Domain.Interfaces.Repositories;
 using Domain.MyBar;
 
 namespace Infrastructure.Repositories;
 
+/// <summary>Un bar par utilisateur, en mémoire, indexé par <see cref="Bar.OwnerId"/>.</summary>
 public class BarRepository : IBarRepository
 {
-    // Bar unique et global : le multi-utilisateur (Bar.OwnerId) est au lot C2.
     private static readonly Lock _verrou = new();
-    private static Bar _bar = Seed();
+    private static readonly Dictionary<Guid, Bar> _bars = [];
 
     /// <summary>
     /// Renvoie une copie : chaque requête travaille sur sa propre instance et publie
     /// son résultat via <see cref="SaveAsync"/>. Sans cela, deux requêtes concurrentes
     /// mutent le même dictionnaire (cf. docs/MVP.md §7, B2).
     /// </summary>
-    public Task<Bar> GetBar()
+    /// <remarks>
+    /// Un bar vide n'est pas stocké à la simple lecture : consulter son bar ne crée rien.
+    /// </remarks>
+    public Task<Bar> GetForOwnerAsync(Guid ownerId)
     {
         lock (_verrou)
         {
-            return Task.FromResult(_bar.Snapshot());
+            return Task.FromResult(_bars.TryGetValue(ownerId, out Bar? bar)
+                ? bar.Snapshot()
+                : new Bar(ownerId));
         }
     }
 
@@ -35,42 +39,18 @@ public class BarRepository : IBarRepository
 
         lock (_verrou)
         {
-            if (bar.Version != _bar.Version)
+            // Un bar jamais enregistré est en version 0 : deux premières sauvegardes
+            // concurrentes se départagent comme les suivantes.
+            int versionStockee = _bars.TryGetValue(bar.OwnerId, out Bar? actuel) ? actuel.Version : 0;
+
+            if (bar.Version != versionStockee)
                 throw new ConflitDeConcurrenceException(
                     "Le bar a été modifié entre-temps. Recharge-le puis recommence.");
 
             Bar publie = bar.Snapshot();
-            publie.Version = _bar.Version + 1;
-            _bar = publie;
-        }
+            publie.Version = versionStockee + 1;
+            _bars[bar.OwnerId] = publie;        }
 
         return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Stock de départ. Volontairement en possession simple (sans volume) pour la
-    /// plupart des lignes : c'est le mode nominal du grand public. Quelques bouteilles
-    /// sont en suivi précis pour que le décompte de `MakeCocktails` reste démontrable.
-    /// </summary>
-    private static Bar Seed()
-    {
-        Bar bar = new() { CreatedAt = DateTime.MinValue };
-
-        string[] possessionSimple =
-        [
-            "Eau", "Sirop de sucre", "Citron", "Vodka", "Gin", "Tequila", "Triple sec",
-            "Jus d'orange", "Jus de cranberry", "Jus d'ananas", "Citron vert",
-            "Crème de coco", "Menthe", "Eau gazeuse", "Glace pilée"
-        ];
-
-        foreach (string name in possessionSimple)
-        {
-            bar.AddIngredient(IngredientReferentiel.Resolve(name));
-        }
-
-        bar.AddIngredient(IngredientReferentiel.Resolve("Rhum blanc"), new Volume(700, UniteVolume.Mililitre));
-        bar.AddIngredient(IngredientReferentiel.Resolve("Sirop de grenadine"), new Volume(250, UniteVolume.Mililitre));
-
-        return bar;
     }
 }

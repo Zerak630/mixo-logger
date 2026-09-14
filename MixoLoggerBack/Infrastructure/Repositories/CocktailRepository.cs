@@ -129,4 +129,23 @@ public class CocktailRepository : ICocktailRepository
 
 		return Task.CompletedTask;
 	}
+
+	/// <summary>
+	/// Ne retire que l'instance lue : si la recette a été modifiée depuis (autre onglet), on
+	/// refuse plutôt que de supprimer une version que l'auteur n'a pas vue.
+	/// </summary>
+	public Task DeleteAsync(Cocktail cocktail)
+	{
+		ArgumentNullException.ThrowIfNull(cocktail);
+
+		if (!_store.TryRemove(new KeyValuePair<Guid, Cocktail>(cocktail.Id, cocktail)))
+		{
+			if (_store.ContainsKey(cocktail.Id))
+				throw new ConflitDeConcurrenceException("La recette a été modifiée entre-temps. Recharge-la puis recommence.");
+
+			throw new KeyNotFoundException($"Cocktail with ID {cocktail.Id} not found.");
+		}
+
+		return Task.CompletedTask;
+	}
 }

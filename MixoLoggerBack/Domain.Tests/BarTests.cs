@@ -6,6 +6,8 @@ namespace Domain.Tests;
 
 public class BarTests
 {
+	private static readonly Guid Proprietaire = Guid.NewGuid();
+
 	private static Cocktail UnCocktailAvec(params CocktailIngredient[] ingredients) =>
 		new("Cocktail de test", ingredients, EtapeRecette.FromOrderedList(["Verser"]));
 
@@ -17,9 +19,15 @@ public class BarTests
 	// ------------------------------------------------------------------
 
 	[Fact]
+	public void SansProprietaire_Leve()
+	{
+		Assert.Throws<ArgumentException>(() => new Bar(Guid.Empty));
+	}
+
+	[Fact]
 	public void AddIngredient_Null_Leve()
 	{
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 
 		Assert.Throws<ArgumentNullException>(() => bar.AddIngredient(null!, Ml(50)));
 	}
@@ -27,7 +35,7 @@ public class BarTests
 	[Fact]
 	public void AddIngredient_SansVolume_CreeUneLigneEnPossessionSimple()
 	{
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		var rhum = new Ingredient("Rhum blanc");
 
 		bar.AddIngredient(rhum);
@@ -42,7 +50,7 @@ public class BarTests
 	public void CanMake_PossessionSimple_NeBloqueJamaisSurLaQuantite()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum);
 
 		var cocktail = UnCocktailAvec(new CocktailIngredient(rhum, 5, UniteVolume.Litre));
@@ -54,7 +62,7 @@ public class BarTests
 	public void MakeCocktail_PossessionSimple_LaisseLaLigneIntacte()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, NiveauStock.Entamee);
 
 		bar.MakeCocktail(UnCocktailAvec(new CocktailIngredient(rhum, 50, UniteVolume.Mililitre)));
@@ -66,7 +74,7 @@ public class BarTests
 	[Fact]
 	public void SetNiveau_IngredientAbsent_Leve()
 	{
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 
 		Assert.Throws<KeyNotFoundException>(() => bar.SetNiveau(new Ingredient("Gin"), NiveauStock.PresqueFinie));
 	}
@@ -75,7 +83,7 @@ public class BarTests
 	public void SetNiveau_ConserveLeVolumeSuivi()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(300));
 
 		bar.SetNiveau(rhum, NiveauStock.PresqueFinie);
@@ -88,7 +96,7 @@ public class BarTests
 	public void RemoveIngredient_RetireLaLigne_EtEstIdempotent()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum);
 
 		Assert.True(bar.RemoveIngredient(rhum));
@@ -104,7 +112,7 @@ public class BarTests
 	[Fact]
 	public void AddIngredient_AvecVolume_ConserveLUniteDeSaisie()
 	{
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		var rhum = new Ingredient("Rhum blanc");
 
 		bar.AddIngredient(rhum, new Volume(70, UniteVolume.Centilitre));
@@ -117,7 +125,7 @@ public class BarTests
 	[Fact]
 	public void AddIngredient_DeuxFois_CumuleLesVolumes()
 	{
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		var rhum = new Ingredient("Rhum blanc");
 
 		bar.AddIngredient(rhum, Ml(50));
@@ -130,14 +138,14 @@ public class BarTests
 	[Fact]
 	public void CanMake_Null_Leve()
 	{
-		Assert.Throws<ArgumentNullException>(() => new Bar().CanMake(null!));
+		Assert.Throws<ArgumentNullException>(() => new Bar(Proprietaire).CanMake(null!));
 	}
 
 	[Fact]
 	public void CanMake_StockSuffisant_RenvoieVrai()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(100));
 
 		Assert.True(bar.CanMake(UnCocktailAvec(new CocktailIngredient(rhum, 50, UniteVolume.Mililitre))));
@@ -147,7 +155,7 @@ public class BarTests
 	public void CanMake_StockInsuffisant_RenvoieFaux()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(20));
 
 		Assert.False(bar.CanMake(UnCocktailAvec(new CocktailIngredient(rhum, 50, UniteVolume.Mililitre))));
@@ -156,7 +164,7 @@ public class BarTests
 	[Fact]
 	public void CanMake_IngredientAbsent_RenvoieFaux()
 	{
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(new Ingredient("Gin"), Ml(500));
 
 		var cocktail = UnCocktailAvec(new CocktailIngredient(new Ingredient("Rhum blanc"), 50, UniteVolume.Mililitre));
@@ -167,14 +175,14 @@ public class BarTests
 	[Fact]
 	public void MakeCocktail_Null_Leve()
 	{
-		Assert.Throws<ArgumentNullException>(() => new Bar().MakeCocktail(null!));
+		Assert.Throws<ArgumentNullException>(() => new Bar(Proprietaire).MakeCocktail(null!));
 	}
 
 	[Fact]
 	public void MakeCocktail_StockInsuffisant_Leve()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(10));
 
 		var cocktail = UnCocktailAvec(new CocktailIngredient(rhum, 50, UniteVolume.Mililitre));
@@ -186,7 +194,7 @@ public class BarTests
 	public void MakeCocktail_DecrementeLeStock()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(100));
 
 		bar.MakeCocktail(UnCocktailAvec(new CocktailIngredient(rhum, 40, UniteVolume.Mililitre)));
@@ -202,7 +210,7 @@ public class BarTests
 	[Fact]
 	public void CanMake_MemeIngredientInstancesDifferentes_RenvoieVrai()
 	{
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(new Ingredient("Rhum blanc"), Ml(100));
 
 		var cocktail = UnCocktailAvec(new CocktailIngredient(new Ingredient("Rhum blanc"), 50, UniteVolume.Mililitre));
@@ -213,7 +221,7 @@ public class BarTests
 	[Fact]
 	public void AddIngredient_MemeNomInstancesDifferentes_CumuleAuLieuDeDupliquer()
 	{
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 
 		bar.AddIngredient(new Ingredient("Rhum blanc"), Ml(50));
 		bar.AddIngredient(new Ingredient("Rhum blanc"), Ml(30));
@@ -225,7 +233,7 @@ public class BarTests
 	[Fact]
 	public void AddIngredient_CasseEtAccentsDifferents_DesigneLeMemeIngredient()
 	{
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 
 		bar.AddIngredient(new Ingredient("Crème de coco"), Ml(50));
 		bar.AddIngredient(new Ingredient("CREME DE COCO"), Ml(30));
@@ -242,7 +250,7 @@ public class BarTests
 	public void MakeCocktail_AvecQuantite_DecrementeAutantDeFois()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(200));
 
 		bar.MakeCocktail(UnCocktailAvec(new CocktailIngredient(rhum, 50, UniteVolume.Mililitre)), quantite: 3);
@@ -254,7 +262,7 @@ public class BarTests
 	public void CanMake_QuantiteTropGrandePourLeStock_RenvoieFaux()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(80));
 
 		var cocktail = UnCocktailAvec(new CocktailIngredient(rhum, 50, UniteVolume.Mililitre));
@@ -267,7 +275,7 @@ public class BarTests
 	public void MakeCocktail_QuantiteInvalide_Leve()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(200));
 
 		var cocktail = UnCocktailAvec(new CocktailIngredient(rhum, 50, UniteVolume.Mililitre));
@@ -279,7 +287,7 @@ public class BarTests
 	public void CanMakeAll_CumuleLesBesoinsEntreCocktailsDifferents()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(80));
 
 		var mojito = UnCocktailAvec(new CocktailIngredient(rhum, 50, UniteVolume.Mililitre));
@@ -296,7 +304,7 @@ public class BarTests
 	{
 		var rhum = new Ingredient("Rhum blanc");
 		var gin = new Ingredient("Gin");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(100));
 		bar.AddIngredient(gin, Ml(10));
 
@@ -320,13 +328,14 @@ public class BarTests
 	public void Snapshot_CopieLeStockEtLIdentite()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar { Version = 7 };
+		var bar = new Bar(Proprietaire) { Version = 7 };
 		bar.AddIngredient(rhum, Ml(100));
 
 		var copie = bar.Snapshot();
 
 		Assert.Equal(7, copie.Version);
 		Assert.Equal(bar.Id, copie.Id);
+		Assert.Equal(Proprietaire, copie.OwnerId);
 		Assert.Equal(bar.CreatedAt, copie.CreatedAt);
 		Assert.Equal(100d, copie.Stock[rhum].Volume!.Value, precision: 10);
 	}
@@ -336,7 +345,7 @@ public class BarTests
 	{
 		var rhum = new Ingredient("Rhum blanc");
 		var gin = new Ingredient("Gin");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(100));
 
 		var copie = bar.Snapshot();
@@ -353,7 +362,7 @@ public class BarTests
 	{
 		var rhum = new Ingredient("Rhum blanc");
 		var citron = new Ingredient("Citron vert");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(200));
 		bar.AddIngredient(citron, Ml(100));
 
@@ -375,7 +384,7 @@ public class BarTests
 	public void Manques_CocktailRealisable_EstVide()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(100));
 
 		Assert.Empty(bar.Manques(UnCocktailAvec(new CocktailIngredient(rhum, 50, UniteVolume.Mililitre))));
@@ -387,7 +396,7 @@ public class BarTests
 		var rhum = new Ingredient("Rhum blanc");
 		var menthe = new Ingredient("Menthe");
 		var citron = new Ingredient("Citron vert");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(20));
 		bar.AddIngredient(citron);
 
@@ -407,7 +416,7 @@ public class BarTests
 	public void Manques_PossessionSimple_NeManqueJamais()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, NiveauStock.PresqueFinie);
 
 		Assert.Empty(bar.Manques(UnCocktailAvec(new CocktailIngredient(rhum, 5, UniteVolume.Litre))));
@@ -417,7 +426,7 @@ public class BarTests
 	public void Manques_TientCompteDeLaQuantite()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(80));
 
 		var cocktail = UnCocktailAvec(new CocktailIngredient(rhum, 50, UniteVolume.Mililitre));
@@ -433,7 +442,7 @@ public class BarTests
 	public void MakeCocktails_Infaisable_DetailleChaqueManqueDansLeMessage()
 	{
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(10));
 
 		var cocktail = UnCocktailAvec(
@@ -452,7 +461,7 @@ public class BarTests
 		// La commande est parcourue deux fois (vérification puis consommation) :
 		// une séquence paresseuse ne doit pas être énumérée deux fois.
 		var rhum = new Ingredient("Rhum blanc");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(100));
 		var cocktail = UnCocktailAvec(new CocktailIngredient(rhum, 40, UniteVolume.Mililitre));
 		int enumerations = 0;
@@ -478,7 +487,7 @@ public class BarTests
 	public void Manques_Decompte_IngredientPresent_NeManquePas()
 	{
 		var menthe = new Ingredient("Menthe");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(menthe, Ml(5));
 
 		Assert.Empty(bar.Manques(UnCocktailAvec(new CocktailIngredient(menthe, 50, Dose.Feuille)), quantite: 10));
@@ -487,7 +496,7 @@ public class BarTests
 	[Fact]
 	public void Manques_Decompte_IngredientAbsent_ManqueSansVolumeRequis()
 	{
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 
 		var manque = Assert.Single(bar.Manques(UnCocktailAvec(new CocktailIngredient(new Ingredient("Angostura"), 2, Dose.Trait))));
 
@@ -500,7 +509,7 @@ public class BarTests
 	{
 		var rhum = new Ingredient("Rhum blanc");
 		var menthe = new Ingredient("Menthe");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(rhum, Ml(200));
 		bar.AddIngredient(menthe, Ml(30));
 
@@ -520,7 +529,7 @@ public class BarTests
 		// Deux recettes différentes dans une même commande : l'une exprime l'angostura en
 		// volume, l'autre en traits. Seul le volume se compare au stock.
 		var angostura = new Ingredient("Angostura");
-		var bar = new Bar();
+		var bar = new Bar(Proprietaire);
 		bar.AddIngredient(angostura, Ml(10));
 
 		var enVolume = UnCocktailAvec(new CocktailIngredient(angostura, 8, UniteVolume.Mililitre));

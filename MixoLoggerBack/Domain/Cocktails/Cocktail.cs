@@ -1,4 +1,5 @@
 using Domain.Interfaces;
+using Domain.Utilisateurs;
 
 namespace Domain.Cocktails;
 
@@ -15,14 +16,24 @@ public class Cocktail : IAggregate
 	public IReadOnlyCollection<CocktailIngredient> Ingredients { get; }
 	public IReadOnlyCollection<EtapeRecette> EtapeRecettes { get; }
 
-	public Cocktail(string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description = null)
-		: this(Guid.NewGuid(), name, ingredients, etapes, description)
+	/// <summary>
+	/// L'utilisateur qui a créé la recette, seul autorisé à la modifier ou la supprimer.
+	/// <c>null</c> pour les recettes d'origine de l'application, qui restent en lecture seule.
+	/// </summary>
+	public Guid? AuthorId { get; }
+
+	public Cocktail(string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description = null, Guid? authorId = null)
+		: this(Guid.NewGuid(), name, ingredients, etapes, description, authorId)
 	{
 	}
 
-	private Cocktail(Guid id, string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description)
+	private Cocktail(Guid id, string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description, Guid? authorId)
 	{
 		Id = id;
+
+		if (authorId == Guid.Empty)
+			throw new ArgumentException("L'auteur de la recette est invalide.", nameof(authorId));
+		AuthorId = authorId;
 
 		ArgumentNullException.ThrowIfNull(name, nameof(name));
 		if (string.IsNullOrWhiteSpace(name))
@@ -56,8 +67,20 @@ public class Cocktail : IAggregate
 	}
 
 	/// <summary>
-	/// La même recette (même <see cref="Id"/>) avec un nouveau contenu, validé comme à la création.
+	/// La même recette (même <see cref="Id"/>, même auteur) avec un nouveau contenu, validé comme à la création.
 	/// </summary>
 	public Cocktail Modifier(string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description = null) =>
-		new(Id, name, ingredients, etapes, description);
+		new(Id, name, ingredients, etapes, description, AuthorId);
+
+	/// <summary>Vrai si cet utilisateur peut modifier ou supprimer la recette : il en est l'auteur.</summary>
+	public bool EstModifiablePar(Guid utilisateurId) => AuthorId is { } auteur && auteur == utilisateurId;
+
+	/// <exception cref="ActionNonAutoriseeException">L'utilisateur n'est pas l'auteur de la recette.</exception>
+	public void VerifierModifiablePar(Guid utilisateurId)
+	{
+		if (!EstModifiablePar(utilisateurId))
+			throw new ActionNonAutoriseeException(AuthorId is null
+				? $"« {Name} » est une recette d'origine : elle ne peut pas être modifiée."
+				: $"Seul l'auteur de « {Name} » peut la modifier ou la supprimer.");
+	}
 }

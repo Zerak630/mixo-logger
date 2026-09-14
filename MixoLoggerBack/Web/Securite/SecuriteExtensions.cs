@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
+using Application.Utilisateurs;
 using Domain.Interfaces;
 using Domain.Interfaces.Repositories;
 using Infrastructure.Repositories;
@@ -30,6 +31,8 @@ public static class SecuriteExtensions
 
         services.AddSingleton<IHacheurMotDePasse, HacheurMotDePasse>();
         services.AddSingleton<IUtilisateurRepository, UtilisateurRepository>();
+        services.AddHttpContextAccessor();
+        services.AddScoped<IUtilisateurCourant, UtilisateurCourant>();
 
         services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
             .AddCookie(options =>

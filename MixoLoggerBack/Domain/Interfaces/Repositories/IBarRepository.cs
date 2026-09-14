@@ -4,7 +4,11 @@ namespace Domain.Interfaces.Repositories;
 
 public interface IBarRepository
 {
-    Task<Bar> GetBar();
+    /// <summary>
+    /// Le bar de cet utilisateur. Toujours une copie de travail ; un utilisateur qui n'a
+    /// encore rien enregistré reçoit un bar vide (version 0), créé à sa première sauvegarde.
+    /// </summary>
+    Task<Bar> GetForOwnerAsync(Guid ownerId);
 
     /// <summary>
     /// Persiste l'état du bar. Indispensable même en stockage mémoire : sans cet appel,

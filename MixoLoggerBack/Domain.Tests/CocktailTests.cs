@@ -1,4 +1,5 @@
 using Domain.Cocktails;
+using Domain.Utilisateurs;
 using Xunit;
 
 namespace Domain.Tests;
@@ -228,5 +229,49 @@ public class CocktailValidationTests
 		var original = new Cocktail("Mojito", [Rhum()], UneEtape());
 
 		Assert.Throws<ArgumentException>(() => original.Modifier("Mojito", [], UneEtape()));
+	}
+}
+
+public class CocktailAuteurTests
+{
+	private static readonly Guid Alice = Guid.NewGuid();
+	private static readonly Guid Bob = Guid.NewGuid();
+
+	private static Cocktail RecetteDe(Guid? auteur) =>
+		new("Mojito", [new CocktailIngredient(new Ingredient("Rhum blanc"), 50, UniteVolume.Mililitre)], EtapeRecette.FromOrderedList(["Verser"]), authorId: auteur);
+
+	[Fact]
+	public void AuteurVide_Leve()
+	{
+		Assert.Throws<ArgumentException>(() => RecetteDe(Guid.Empty));
+	}
+
+	[Fact]
+	public void SeulLAuteur_PeutModifier()
+	{
+		var recette = RecetteDe(Alice);
+
+		Assert.True(recette.EstModifiablePar(Alice));
+		Assert.False(recette.EstModifiablePar(Bob));
+		recette.VerifierModifiablePar(Alice);
+		Assert.Throws<ActionNonAutoriseeException>(() => recette.VerifierModifiablePar(Bob));
+	}
+
+	[Fact]
+	public void RecetteDOrigine_NEstModifiableParPersonne()
+	{
+		var recette = RecetteDe(null);
+
+		Assert.False(recette.EstModifiablePar(Alice));
+		var erreur = Assert.Throws<ActionNonAutoriseeException>(() => recette.VerifierModifiablePar(Alice));
+		Assert.Contains("recette d'origine", erreur.Message);
+	}
+
+	[Fact]
+	public void Modifier_ConserveLAuteur()
+	{
+		var modifie = RecetteDe(Alice).Modifier("Mojito royal", [new CocktailIngredient(new Ingredient("Rhum blanc"), 5, UniteVolume.Centilitre)], EtapeRecette.FromOrderedList(["Verser"]));
+
+		Assert.Equal(Alice, modifie.AuthorId);
 	}
 }

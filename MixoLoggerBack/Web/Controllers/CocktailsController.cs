@@ -42,7 +42,7 @@ public class CocktailsController(IMediator mediator) : ControllerBase
         return CreatedAtAction(nameof(GetCocktail), new { Id = cree.Id }, cree);
     }
 
-    /// <summary>Remplace le contenu d'une recette existante.</summary>
+    /// <summary>Remplace le contenu d'une recette existante. 403 si l'utilisateur n'en est pas l'auteur.</summary>
     [HttpPut("{id:guid}")]
     public async Task<CocktailDetailDto> UpdateCocktail(
         Guid id,
@@ -50,5 +50,14 @@ public class CocktailsController(IMediator mediator) : ControllerBase
         CancellationToken cancellationToken = default)
     {
         return await mediator.Send(new UpdateCocktailCommand { Id = id, Recette = recette }, cancellationToken);
+    }
+
+    /// <summary>Supprime une recette. 403 si l'utilisateur n'en est pas l'auteur.</summary>
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteCocktail(Guid id, CancellationToken cancellationToken = default)
+    {
+        await mediator.Send(new DeleteCocktailCommand { Id = id }, cancellationToken);
+
+        return NoContent();
     }
 }

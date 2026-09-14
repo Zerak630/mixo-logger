@@ -1,14 +1,12 @@
 using Application.Cocktails.Dtos;
+using Application.Utilisateurs;
 using Domain.Cocktails;
 using Domain.Interfaces.Repositories;
 using MediatR;
 
 namespace Application.Cocktails.Commands;
 
-/// <summary>
-/// Remplace le contenu d'une recette. Sans comptes utilisateurs, n'importe qui peut modifier
-/// n'importe quelle recette : la règle « seul l'auteur modifie » arrive avec le lot C.
-/// </summary>
+/// <summary>Remplace le contenu d'une recette. Réservé à son auteur : 403 pour les autres.</summary>
 public class UpdateCocktailCommand : IRequest<CocktailDetailDto>
 {
     public required Guid Id { get; init; }
@@ -17,7 +15,9 @@ public class UpdateCocktailCommand : IRequest<CocktailDetailDto>
 
 public class UpdateCocktailCommandHandler(
     ICocktailRepository cocktailRepository,
-    IIngredientRepository ingredientRepository
+    IIngredientRepository ingredientRepository,
+    IUtilisateurRepository utilisateurRepository,
+    IUtilisateurCourant utilisateurCourant
 ) : IRequestHandler<UpdateCocktailCommand, CocktailDetailDto>
 {
     public async Task<CocktailDetailDto> Handle(UpdateCocktailCommand command, CancellationToken cancellationToken)
@@ -28,6 +28,10 @@ public class UpdateCocktailCommandHandler(
         Cocktail actuel = await cocktailRepository.GetByIdAsync(command.Id)
             ?? throw new KeyNotFoundException($"Cocktail with ID {command.Id} not found.");
 
+        // Avant toute validation du contenu : un non-auteur n'apprend rien sur les noms pris,
+        // et sa saisie ne crée aucun ingrédient dans le référentiel.
+        actuel.VerifierModifiablePar(utilisateurCourant.Id);
+
         await saisie.VerifierNomDisponibleAsync(cocktailRepository, idModifie: actuel.Id);
 
         Cocktail modifie = await saisie.ConstruireAsync(ingredientRepository,
@@ -35,6 +39,6 @@ public class UpdateCocktailCommandHandler(
 
         await cocktailRepository.UpdateAsync(modifie);
 
-        return new CocktailDetailDto(modifie);
+        return await CocktailDetailDto.PourAsync(modifie, utilisateurRepository, utilisateurCourant);
     }
 }

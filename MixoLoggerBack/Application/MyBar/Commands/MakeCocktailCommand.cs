@@ -1,4 +1,5 @@
 using Application.MyBar.Dtos;
+using Application.Utilisateurs;
 using Domain.Cocktails;
 using Domain.Interfaces.Repositories;
 using Domain.MyBar;
@@ -15,13 +16,13 @@ public class MakeCocktailCommand : IRequest<MyBarDto>
 
 public class MakeCocktailCommandHandler(
     IBarRepository barRepository,
-    ICocktailRepository cocktailRepository
+    ICocktailRepository cocktailRepository,
+    IUtilisateurCourant utilisateurCourant
 ) : IRequestHandler<MakeCocktailCommand, MyBarDto>
 {
     public async Task<MyBarDto> Handle(MakeCocktailCommand request, CancellationToken cancellationToken)
     {
-        Bar bar = await barRepository.GetBar()
-            ?? throw new InvalidOperationException("Bar not found.");
+        Bar bar = await barRepository.GetForOwnerAsync(utilisateurCourant.Id);
 
         // On construit d'abord la commande entière : `MakeCocktails` valide la totalité
         // des besoins — quantités comprises — avant de consommer quoi que ce soit, et

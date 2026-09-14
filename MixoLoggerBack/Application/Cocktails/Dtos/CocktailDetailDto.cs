@@ -1,4 +1,6 @@
+using Application.Utilisateurs;
 using Domain.Cocktails;
+using Domain.Interfaces.Repositories;
 
 namespace Application.Cocktails.Dtos;
 
@@ -16,7 +18,16 @@ public class CocktailDetailDto
     /// <summary>Étapes dans l'ordre de préparation.</summary>
     public IReadOnlyList<EtapeDto> Etapes { get; init; }
 
-    public CocktailDetailDto(Cocktail cocktail)
+    /// <summary>
+    /// Nom affiché de l'auteur. <c>null</c> pour une recette d'origine, ou si le compte de
+    /// l'auteur a été retiré.
+    /// </summary>
+    public string? Auteur { get; init; }
+
+    /// <summary>Vrai si l'utilisateur connecté en est l'auteur, donc peut la modifier et la supprimer.</summary>
+    public bool Modifiable { get; init; }
+
+    public CocktailDetailDto(Cocktail cocktail, string? auteur, bool modifiable)
     {
         ArgumentNullException.ThrowIfNull(cocktail, nameof(cocktail));
 
@@ -25,6 +36,20 @@ public class CocktailDetailDto
         Description = cocktail.Description;
         Ingredients = [.. cocktail.Ingredients.Select(composant => new DoseIngredientDto(composant))];
         Etapes = [.. cocktail.EtapeRecettes.OrderBy(etape => etape.Ordre).Select(etape => new EtapeDto(etape.Ordre, etape.Description))];
+        Auteur = auteur;
+        Modifiable = modifiable;
+    }
+
+    /// <summary>Le détail tel que le voit l'utilisateur connecté : nom de l'auteur et droit de modification résolus.</summary>
+    public static async Task<CocktailDetailDto> PourAsync(Cocktail cocktail, IUtilisateurRepository utilisateurRepository, IUtilisateurCourant utilisateurCourant)
+    {
+        ArgumentNullException.ThrowIfNull(cocktail, nameof(cocktail));
+
+        string? auteur = cocktail.AuthorId is { } authorId
+            ? (await utilisateurRepository.GetByIdAsync(authorId))?.NomAffiche
+            : null;
+
+        return new CocktailDetailDto(cocktail, auteur, cocktail.EstModifiablePar(utilisateurCourant.Id));
     }
 }
 

@@ -5,7 +5,7 @@ namespace Infrastructure.Securite;
 /// </summary>
 /// <remarks>
 /// À renseigner hors du dépôt — user-secrets en développement, variables d'environnement
-/// sur le serveur (cf. docs/MVP.md §10.1). Les mots de passe sont hachés au démarrage et
+/// sur le serveur (cf. docs/MVP.md §10.2). Les mots de passe sont hachés au démarrage et
 /// ne sont plus conservés en clair ensuite.
 /// </remarks>
 public class ComptesOptions

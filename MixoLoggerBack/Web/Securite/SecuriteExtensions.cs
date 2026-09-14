@@ -118,7 +118,7 @@ public static class SecuriteExtensions
 
         if (depot.Nombre == 0)
             app.Logger.LogWarning(
-                "Aucun compte configuré : personne ne pourra se connecter. Déclare-les dans la section « {Section} » (cf. docs/MVP.md §10.1).",
+                "Aucun compte configuré : personne ne pourra se connecter. Déclare-les dans la section « {Section} » (cf. docs/MVP.md §10.2).",
                 ComptesOptions.Section);
         else
             app.Logger.LogInformation("{Nombre} compte(s) chargé(s).", depot.Nombre);

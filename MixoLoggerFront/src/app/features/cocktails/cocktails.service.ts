@@ -29,8 +29,14 @@ export class CocktailsService {
     return this.http.post<CocktailDetail>("/Cocktails", recette);
   }
 
+  /** 403 si l'utilisateur n'est pas l'auteur de la recette. */
   public updateCocktail(id: Guid, recette: RecetteSaisie): Observable<CocktailDetail> {
     return this.http.put<CocktailDetail>(`/Cocktails/${id}`, recette);
+  }
+
+  /** 403 si l'utilisateur n'est pas l'auteur, 404 si la recette n'existe plus. */
+  public deleteCocktail(id: Guid): Observable<void> {
+    return this.http.delete<void>(`/Cocktails/${id}`);
   }
 
   /**

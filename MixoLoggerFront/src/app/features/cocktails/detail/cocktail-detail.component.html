@@ -1,10 +1,30 @@
 <article class="detail" aria-labelledby="detail-nom">
   <div class="detail__entete">
     <div>
-      <p class="detail__surtitre">Détail du cocktail</p>
+      <p class="detail__surtitre">
+        @if (cocktail().modifiable) {
+          Ta recette
+        } @else if (cocktail().auteur) {
+          Recette de {{ cocktail().auteur }}
+        } @else {
+          Recette d'origine
+        }
+      </p>
       <h2 id="detail-nom" class="detail__nom">{{ cocktail().name }}</h2>
     </div>
-    <a pButton routerLink="edit" label="Modifier" icon="pi pi-pencil" severity="secondary" [outlined]="true" class="detail__modifier"></a>
+    <!-- Seul l'auteur modifie ou supprime : l'API le refuse aux autres, inutile de leur proposer. -->
+    @if (cocktail().modifiable) {
+      <div class="detail__actions">
+        <a pButton routerLink="edit" label="Modifier" icon="pi pi-pencil" severity="secondary" [outlined]="true" class="detail__modifier"></a>
+        <p-button
+          label="Supprimer"
+          icon="pi pi-trash"
+          severity="danger"
+          [text]="true"
+          [loading]="suppressionEnCours()"
+          (onClick)="supprimer($event)" />
+      </div>
+    }
   </div>
 
   @if (cocktail().description) {
@@ -60,3 +80,5 @@
 
   <p-button label="Faire ce cocktail" icon="pi pi-check" (onClick)="makeThisCocktail()" />
 </article>
+
+<p-confirmpopup />

@@ -56,6 +56,9 @@ export default class CocktailEditionComponent {
 
   readonly enEdition = computed(() => !!this.cocktail());
 
+  /** Recette d'un autre auteur, ou d'origine : l'API refuserait l'enregistrement (403). */
+  readonly interdit = computed(() => this.cocktail()?.modifiable === false);
+
   private readonly referentiel = toSignal(this.myBarService.getIngredients(), { initialValue: [] as IngredientReference[] });
 
   readonly optionsUnite = toSignal(

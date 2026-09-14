@@ -23,6 +23,10 @@ export interface CocktailDetail extends Cocktail {
 	ingredients: DoseIngredient[];
 	/** Dans l'ordre de préparation. */
 	etapes: Etape[];
+	/** Nom affiché de l'auteur ; `null` pour une recette d'origine (ou un compte retiré). */
+	auteur: string | null;
+	/** Vrai si l'utilisateur connecté en est l'auteur : lui seul peut la modifier ou la supprimer. */
+	modifiable: boolean;
 }
 
 /** Un ingrédient de la recette et sa dose pour un verre. */

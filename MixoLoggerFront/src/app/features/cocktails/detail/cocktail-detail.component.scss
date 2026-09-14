@@ -17,8 +17,15 @@
     gap: 1rem;
   }
 
-  &__modifier {
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
     flex-shrink: 0;
+  }
+
+  &__modifier {
     text-decoration: none;
   }
 

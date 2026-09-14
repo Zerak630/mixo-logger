@@ -1,3 +1,19 @@
+<!-- Accès direct par l'URL à la recette d'un autre : on explique plutôt que d'afficher un formulaire voué au 403. -->
+@if (interdit()) {
+  <section class="edition" aria-labelledby="edition-interdite-titre">
+    <p class="edition__surtitre">Modifier la recette</p>
+    <h2 id="edition-interdite-titre" class="edition__titre">{{ cocktail()!.name }}</h2>
+    <p class="edition__erreur-globale" role="alert">
+      <span class="pi pi-lock" aria-hidden="true"></span>
+      {{ cocktail()!.auteur
+        ? 'Seul ' + cocktail()!.auteur + ', son auteur, peut modifier cette recette.'
+        : "C'est une recette d'origine : elle ne peut pas être modifiée." }}
+    </p>
+    <footer class="edition__actions">
+      <a pButton [routerLink]="['/cocktails', cocktail()!.id]" label="Retour à la recette" icon="pi pi-arrow-left" severity="secondary" [outlined]="true"></a>
+    </footer>
+  </section>
+} @else {
 <form class="edition" [formGroup]="formulaire" (ngSubmit)="enregistrer()" novalidate aria-labelledby="edition-titre">
   <header class="edition__entete">
     <p class="edition__surtitre">{{ enEdition() ? 'Modifier la recette' : 'Nouvelle recette' }}</p>
@@ -154,3 +170,4 @@
       icon="pi pi-check" [loading]="enregistrementEnCours()" />
   </footer>
 </form>
+}

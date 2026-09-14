@@ -6,11 +6,25 @@ export interface Cocktail {
 	description: string | null;
 }
 
-/** Un cocktail de la liste, évalué contre le bar courant (F4). */
+/** Un cocktail de la liste, évalué contre le bar de l'utilisateur connecté (F4). */
 export interface CocktailResume extends Cocktail {
+	/** Noms canoniques des ingrédients : la recherche porte aussi sur eux (F8). */
+	ingredients: string[];
 	realisable: boolean;
 	/** Ce qui manque pour un verre, dans l'ordre de la recette. Vide si réalisable. */
 	manques: Manque[];
+	/** Vrai si l'utilisateur connecté en est l'auteur (filtre « Mes recettes »). */
+	modifiable: boolean;
+	notes: Notes;
+}
+
+/** Notes d'un cocktail vues par l'utilisateur connecté (F7). */
+export interface Notes {
+	/** Moyenne arrondie au dixième, `null` sans aucune note. */
+	moyenne: number | null;
+	nombre: number;
+	/** De 1 à 5, `null` si l'utilisateur n'a pas noté. */
+	maNote: number | null;
 }
 
 export interface Manque {
@@ -27,6 +41,7 @@ export interface CocktailDetail extends Cocktail {
 	auteur: string | null;
 	/** Vrai si l'utilisateur connecté en est l'auteur : lui seul peut la modifier ou la supprimer. */
 	modifiable: boolean;
+	notes: Notes;
 }
 
 /** Un ingrédient de la recette et sa dose pour un verre. */

@@ -3,6 +3,7 @@ import { ButtonModule } from '@openng/optimus-ui/button';
 import { CardModule } from '@openng/optimus-ui/card';
 import { CocktailResume } from '../../models/cocktail';
 import { toggle } from '../../utils/toggle-signal';
+import { formaterMoyenne, libelleNotes } from '../../utils/libelle-notes';
 import { MessageModule } from '@openng/optimus-ui/message';
 import { MessageService } from '@openng/optimus-ui/api';
 
@@ -29,6 +30,12 @@ export class CocktailCardComponent {
     this.cocktail().manques
       .map(manque => manque.raison === 'Insuffisant' ? `${manque.ingredient} (pas assez)` : manque.ingredient)
       .join(', '));
+
+  /** « 4,3 » : virgule décimale française. */
+  public readonly moyenneAffichee = computed(() => formaterMoyenne(this.cocktail().notes.moyenne));
+
+  /** « Note moyenne 4,3 sur 5 (3 notes), ta note : 5 » — lu par les lecteurs d'écran et en infobulle. */
+  public readonly libelleNote = computed(() => libelleNotes(this.cocktail().notes));
 
   public isFocused = toggle(false);
 

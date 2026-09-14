@@ -1,18 +1,22 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ConfirmationService, MessageService } from '@openng/optimus-ui/api';
 import { Button, ButtonDirective } from '@openng/optimus-ui/button';
 import { ConfirmPopup } from '@openng/optimus-ui/confirmpopup';
-import { CocktailDetail, DoseIngredient } from '../../../models/cocktail';
+import { Rating } from '@openng/optimus-ui/rating';
+import { Observable } from 'rxjs';
+import { CocktailDetail, DoseIngredient, Notes } from '../../../models/cocktail';
 import { libelleDose } from '../../../utils/libelle-dose';
+import { formaterMoyenne } from '../../../utils/libelle-notes';
 import { CocktailsService } from '../cocktails.service';
 
 @Component({
   selector: 'cocktail-detail',
   templateUrl: './cocktail-detail.component.html',
   styleUrls: ['./cocktail-detail.component.scss'],
-  imports: [Button, ButtonDirective, ConfirmPopup, RouterLink],
+  imports: [Button, ButtonDirective, ConfirmPopup, FormsModule, Rating, RouterLink],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -26,6 +30,13 @@ export default class CocktailDetailComponent {
   nbVerres = signal(1);
 
   readonly suppressionEnCours = signal(false);
+
+  /** Part de celles du cocktail résolu, puis suit les réponses de l'API après chaque notation. */
+  readonly notes = linkedSignal(() => this.cocktail().notes);
+
+  readonly moyenneAffichee = computed(() => formaterMoyenne(this.notes().moyenne));
+
+  readonly notationEnCours = signal(false);
 
   /** « 12 feuilles » pour 2 verres de Mojito. */
   doseAffichee(ingredient: DoseIngredient): string {
@@ -56,6 +67,44 @@ export default class CocktailDetailComponent {
         ? erreur.error.detail
         : 'Erreur lors de la préparation du cocktail.');
     }
+  }
+
+  /** Donne ou change sa note. Une valeur vide (étoile désélectionnée) retire la note. */
+  noter(valeur: number | null): void {
+    if (valeur === this.notes().maNote) return;
+    if (valeur === null) {
+      this.retirerNote();
+      return;
+    }
+
+    this.envoyerNotation(this.cocktailService.noter(this.cocktail().id, valeur));
+  }
+
+  retirerNote(): void {
+    this.envoyerNotation(this.cocktailService.retirerNote(this.cocktail().id));
+  }
+
+  private envoyerNotation(requete: Observable<Notes>): void {
+    const avant = this.notes();
+    this.notationEnCours.set(true);
+
+    requete.subscribe({
+      next: notes => {
+        this.notes.set(notes);
+        this.notationEnCours.set(false);
+      },
+      error: (erreur: HttpErrorResponse) => {
+        // Les étoiles reviennent à la note réellement enregistrée.
+        this.notes.set({ ...avant });
+        this.notationEnCours.set(false);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Note non enregistrée',
+          detail: erreur.error?.detail ?? "La note n'a pas pu être enregistrée. Réessaie dans un instant.",
+          life: 6000
+        });
+      }
+    });
   }
 
   /** Suppression définitive, après confirmation : il n'y a pas de corbeille. */

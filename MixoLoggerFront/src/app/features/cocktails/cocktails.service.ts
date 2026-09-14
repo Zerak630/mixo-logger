@@ -1,6 +1,6 @@
 import { HttpClient } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
-import { CocktailDetail, CocktailResume, RecetteSaisie, UniteDose } from "../../models/cocktail";
+import { CocktailDetail, CocktailResume, Notes, RecetteSaisie, UniteDose } from "../../models/cocktail";
 import { firstValueFrom, Observable } from "rxjs";
 import { Guid } from "../../core/base-models";
 import { MyBar } from "../../models/bar";
@@ -37,6 +37,16 @@ export class CocktailsService {
   /** 403 si l'utilisateur n'est pas l'auteur, 404 si la recette n'existe plus. */
   public deleteCocktail(id: Guid): Observable<void> {
     return this.http.delete<void>(`/Cocktails/${id}`);
+  }
+
+  /** Donne ou change sa note (1 à 5) ; renvoie la moyenne à jour. */
+  public noter(id: Guid, valeur: number): Observable<Notes> {
+    return this.http.put<Notes>(`/Cocktails/${id}/note`, { valeur });
+  }
+
+  /** Retire sa note ; renvoie la moyenne à jour. */
+  public retirerNote(id: Guid): Observable<Notes> {
+    return this.http.delete<Notes>(`/Cocktails/${id}/note`);
   }
 
   /**

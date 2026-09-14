@@ -63,10 +63,22 @@
       background: var(--mixo-succes);
     }
 
-    &--manque {
+    &--manque,
+    &--note {
       color: var(--mixo-texte);
       background: rgba(10, 10, 10, 0.85);
       border: 1px solid var(--mixo-bordure);
+    }
+
+    // En face du badge de faisabilité, pour ne jamais le recouvrir.
+    &--note {
+      left: auto;
+      right: 0.75rem;
+
+      .pi {
+        color: var(--mixo-accent);
+        font-size: 0.75rem;
+      }
     }
   }
 

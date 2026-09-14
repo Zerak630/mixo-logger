@@ -15,6 +15,13 @@
   </p>
 }
 
+@if (cocktail().notes.moyenne !== null) {
+  <p class="badge badge--note" [title]="libelleNote()">
+    <span class="sr-only">{{ libelleNote() }}</span>
+    <span aria-hidden="true"><span class="pi pi-star-fill"></span> {{ moyenneAffichee() }}</span>
+  </p>
+}
+
 <h2 class="title">{{ cocktail().name }}</h2>
 
 <div class="footer">

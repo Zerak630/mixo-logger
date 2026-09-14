@@ -1,23 +1,45 @@
 <header class="entete">
-  <h2>Liste des cocktails</h2>
-
-  <div class="entete__outils">
-    <div class="filtre">
-      <p-toggleswitch
-        inputId="filtre-realisables"
-        [ngModel]="seulementRealisables()"
-        (onChange)="basculerFiltre($event)" />
-      <label for="filtre-realisables">Seulement ce que je peux faire</label>
-    </div>
-
+  <div class="entete__ligne">
+    <h2>Liste des cocktails</h2>
     <a pButton routerLink="new" label="Ajouter une recette" icon="pi pi-plus" class="entete__ajouter"></a>
   </div>
 
+  <search class="filtres">
+    <p-iconfield class="filtres__recherche">
+      <p-inputicon class="pi pi-search" />
+      <input pInputText type="search" [ngModel]="texte()" (ngModelChange)="texte.set($event)"
+        placeholder="Nom ou ingrédient…" aria-label="Rechercher un cocktail par nom ou ingrédient"
+        autocomplete="off" spellcheck="false" [fluid]="true" />
+    </p-iconfield>
+
+    <div class="filtre">
+      <p-toggleswitch inputId="filtre-realisables" [ngModel]="seulementRealisables()" (ngModelChange)="seulementRealisables.set($event)" />
+      <label for="filtre-realisables">Seulement ce que je peux faire</label>
+    </div>
+
+    <div class="filtre">
+      <p-toggleswitch inputId="filtre-mes-recettes" [ngModel]="seulementMesRecettes()" (ngModelChange)="seulementMesRecettes.set($event)" />
+      <label for="filtre-mes-recettes">Mes recettes</label>
+    </div>
+
+    <p-select
+      [options]="optionsNote"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="noteMinimale()"
+      (ngModelChange)="noteMinimale.set($event)"
+      ariaLabel="Note minimale" />
+  </search>
+
   <p class="entete__compte" aria-live="polite">
-    @switch (nombreRealisables()) {
-      @case (0) { Aucun cocktail réalisable avec ton bar }
-      @case (1) { 1 cocktail réalisable sur {{ cocktails().length }} }
-      @default { {{ nombreRealisables() }} cocktails réalisables sur {{ cocktails().length }} }
+    @if (filtresActifs()) {
+      {{ cocktailsAffiches().length }} cocktail{{ cocktailsAffiches().length > 1 ? 's' : '' }} sur {{ cocktails().length }}
+    } @else {
+      @switch (nombreRealisables()) {
+        @case (0) { Aucun cocktail réalisable avec ton bar }
+        @case (1) { 1 cocktail réalisable sur {{ cocktails().length }} }
+        @default { {{ nombreRealisables() }} cocktails réalisables sur {{ cocktails().length }} }
+      }
     }
   </p>
 </header>
@@ -32,9 +54,14 @@
       </li>
     }
   </ul>
-} @else {
+} @else if (seulementRealisables() && !texte().trim() && !seulementMesRecettes() && noteMinimale() === null) {
   <p class="vide">
     Rien de réalisable pour l'instant. <a routerLink="/my_bar">Complète ton bar</a>
     ou désactive le filtre pour voir ce qu'il te manque.
+  </p>
+} @else {
+  <p class="vide">
+    Aucun cocktail ne correspond à ces critères.
+    <button type="button" class="vide__lien" (click)="reinitialiserFiltres()">Réinitialiser les filtres</button>
   </p>
 }

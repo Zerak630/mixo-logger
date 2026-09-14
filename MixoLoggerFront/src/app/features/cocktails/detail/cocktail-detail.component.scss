@@ -65,6 +65,44 @@
   }
 }
 
+.notes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+
+  &__moyenne {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+    margin: 0;
+    font-size: 1.125rem;
+
+    .pi {
+      align-self: center;
+      color: var(--mixo-accent);
+    }
+  }
+
+  &__nombre {
+    font-size: 0.875rem;
+    color: var(--mixo-texte-secondaire);
+  }
+
+  &__perso {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+  }
+
+  &__libelle {
+    font-size: 0.875rem;
+    color: var(--mixo-texte-secondaire);
+  }
+}
+
 .verres {
   display: flex;
   align-items: center;

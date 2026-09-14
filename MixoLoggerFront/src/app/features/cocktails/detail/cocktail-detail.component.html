@@ -31,6 +31,34 @@
     <p class="detail__description">{{ cocktail().description }}</p>
   }
 
+  <section class="detail__bloc" aria-labelledby="detail-notes">
+    <h3 id="detail-notes" class="detail__intertitre">Notes</h3>
+    <div class="notes">
+      <p class="notes__moyenne" aria-live="polite">
+        @if (notes().moyenne !== null) {
+          <span class="pi pi-star-fill" aria-hidden="true"></span>
+          <strong>{{ moyenneAffichee() }}</strong>&nbsp;/ 5
+          <span class="notes__nombre">({{ notes().nombre }} note{{ notes().nombre > 1 ? 's' : '' }})</span>
+        } @else {
+          <span class="notes__nombre">Pas encore noté</span>
+        }
+      </p>
+
+      <div class="notes__perso">
+        <span id="detail-ma-note" class="notes__libelle">{{ notes().maNote === null ? 'Donne ta note' : 'Ta note' }}</span>
+        <p-rating
+          [ngModel]="notes().maNote"
+          (ngModelChange)="noter($event)"
+          [readonly]="notationEnCours()"
+          aria-labelledby="detail-ma-note" />
+        @if (notes().maNote !== null) {
+          <p-button label="Retirer" severity="secondary" [text]="true" size="small"
+            [disabled]="notationEnCours()" (onClick)="retirerNote()" />
+        }
+      </div>
+    </div>
+  </section>
+
   <section class="detail__bloc" aria-labelledby="detail-verres">
     <h3 id="detail-verres" class="detail__intertitre">Nombre de verres</h3>
     <div class="verres">

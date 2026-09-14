@@ -16,6 +16,7 @@ public class GetCocktailByIdQuery : IRequest<CocktailDetailDto>
 public class GetCocktailByIdQueryHandler(
     ICocktailRepository cocktailRepository,
     IUtilisateurRepository utilisateurRepository,
+    INoteRepository noteRepository,
     IUtilisateurCourant utilisateurCourant
 ) : IRequestHandler<GetCocktailByIdQuery, CocktailDetailDto>
 {
@@ -24,6 +25,6 @@ public class GetCocktailByIdQueryHandler(
         Cocktail cocktail = await cocktailRepository.GetByIdAsync(request.Id)
             ?? throw new KeyNotFoundException($"Cocktail with ID {request.Id} not found.");
 
-        return await CocktailDetailDto.PourAsync(cocktail, utilisateurRepository, utilisateurCourant);
+        return await CocktailDetailDto.PourAsync(cocktail, utilisateurRepository, noteRepository, utilisateurCourant);
     }
 }

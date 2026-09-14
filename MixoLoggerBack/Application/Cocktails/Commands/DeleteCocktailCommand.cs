@@ -13,6 +13,7 @@ public class DeleteCocktailCommand : IRequest
 
 public class DeleteCocktailCommandHandler(
     ICocktailRepository cocktailRepository,
+    INoteRepository noteRepository,
     IUtilisateurCourant utilisateurCourant
 ) : IRequestHandler<DeleteCocktailCommand>
 {
@@ -24,5 +25,7 @@ public class DeleteCocktailCommandHandler(
         cocktail.VerifierModifiablePar(utilisateurCourant.Id);
 
         await cocktailRepository.DeleteAsync(cocktail);
+        // Après la suppression seulement : un refus (409) ne doit pas effacer les notes.
+        await noteRepository.RetirerPourCocktailAsync(cocktail.Id);
     }
 }

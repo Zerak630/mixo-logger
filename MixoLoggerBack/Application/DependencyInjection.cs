@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<ICocktailRepository, CocktailRepository>();
         services.AddScoped<IIngredientRepository, IngredientRepository>();
         services.AddScoped<IBarRepository, BarRepository>();
+        services.AddScoped<INoteRepository, NoteRepository>();
 
         return services;
     }

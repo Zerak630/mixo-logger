@@ -1,10 +1,12 @@
 using Domain.Cocktails;
 using Domain.MyBar;
+using Domain.Notes;
 
 namespace Application.Cocktails.Dtos;
 
 /// <summary>
-/// Un cocktail dans la liste, avec ce que le bar courant permet d'en faire (F4).
+/// Un cocktail dans la liste, avec ce que le bar courant permet d'en faire (F4) et ce qu'il faut
+/// pour le rechercher et le filtrer côté front (F7, F8).
 /// Remplace l'entité de domaine que l'endpoint exposait jusque-là (cf. docs/MVP.md §7, B5).
 /// </summary>
 public class CocktailResumeDto
@@ -13,22 +15,34 @@ public class CocktailResumeDto
     public string Name { get; init; }
     public string? Description { get; init; }
 
+    /// <summary>Noms canoniques des ingrédients, dans l'ordre de la recette : la recherche porte aussi sur eux.</summary>
+    public IReadOnlyList<string> Ingredients { get; init; }
+
     /// <summary>Vrai si le bar contient de quoi préparer un verre.</summary>
     public bool Realisable { get; init; }
 
     /// <summary>Ce qui manque pour un verre, dans l'ordre de la recette. Vide si réalisable.</summary>
     public IReadOnlyList<ManqueDto> Manques { get; init; }
 
-    public CocktailResumeDto(Cocktail cocktail, IReadOnlyList<Manque> manques)
+    /// <summary>Vrai si l'utilisateur connecté en est l'auteur (filtre « Mes recettes »).</summary>
+    public bool Modifiable { get; init; }
+
+    public NotesDto Notes { get; init; }
+
+    public CocktailResumeDto(Cocktail cocktail, IReadOnlyList<Manque> manques, bool modifiable, ResumeNotes notes)
     {
         ArgumentNullException.ThrowIfNull(cocktail, nameof(cocktail));
         ArgumentNullException.ThrowIfNull(manques, nameof(manques));
+        ArgumentNullException.ThrowIfNull(notes, nameof(notes));
 
         Id = cocktail.Id;
         Name = cocktail.Name;
         Description = cocktail.Description;
+        Ingredients = [.. cocktail.Ingredients.Select(composant => composant.Ingredient.Name)];
         Manques = [.. manques.Select(manque => new ManqueDto(manque))];
         Realisable = Manques.Count == 0;
+        Modifiable = modifiable;
+        Notes = new NotesDto(notes);
     }
 }
 

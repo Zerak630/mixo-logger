@@ -16,6 +16,7 @@ public class CreateCocktailCommandHandler(
     ICocktailRepository cocktailRepository,
     IIngredientRepository ingredientRepository,
     IUtilisateurRepository utilisateurRepository,
+    INoteRepository noteRepository,
     IUtilisateurCourant utilisateurCourant
 ) : IRequestHandler<CreateCocktailCommand, CocktailDetailDto>
 {
@@ -31,6 +32,6 @@ public class CreateCocktailCommandHandler(
 
         await cocktailRepository.AddAsync(cocktail);
 
-        return await CocktailDetailDto.PourAsync(cocktail, utilisateurRepository, utilisateurCourant);
+        return await CocktailDetailDto.PourAsync(cocktail, utilisateurRepository, noteRepository, utilisateurCourant);
     }
 }

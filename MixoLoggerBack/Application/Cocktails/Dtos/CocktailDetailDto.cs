@@ -1,6 +1,7 @@
 using Application.Utilisateurs;
 using Domain.Cocktails;
 using Domain.Interfaces.Repositories;
+using Domain.Notes;
 
 namespace Application.Cocktails.Dtos;
 
@@ -27,8 +28,11 @@ public class CocktailDetailDto
     /// <summary>Vrai si l'utilisateur connecté en est l'auteur, donc peut la modifier et la supprimer.</summary>
     public bool Modifiable { get; init; }
 
-    public CocktailDetailDto(Cocktail cocktail, string? auteur, bool modifiable)
+    public NotesDto Notes { get; init; }
+
+    public CocktailDetailDto(Cocktail cocktail, string? auteur, bool modifiable, ResumeNotes notes)
     {
+        ArgumentNullException.ThrowIfNull(notes, nameof(notes));
         ArgumentNullException.ThrowIfNull(cocktail, nameof(cocktail));
 
         Id = cocktail.Id;
@@ -38,10 +42,15 @@ public class CocktailDetailDto
         Etapes = [.. cocktail.EtapeRecettes.OrderBy(etape => etape.Ordre).Select(etape => new EtapeDto(etape.Ordre, etape.Description))];
         Auteur = auteur;
         Modifiable = modifiable;
+        Notes = new NotesDto(notes);
     }
 
-    /// <summary>Le détail tel que le voit l'utilisateur connecté : nom de l'auteur et droit de modification résolus.</summary>
-    public static async Task<CocktailDetailDto> PourAsync(Cocktail cocktail, IUtilisateurRepository utilisateurRepository, IUtilisateurCourant utilisateurCourant)
+    /// <summary>Le détail tel que le voit l'utilisateur connecté : auteur, droit de modification et notes résolus.</summary>
+    public static async Task<CocktailDetailDto> PourAsync(
+        Cocktail cocktail,
+        IUtilisateurRepository utilisateurRepository,
+        INoteRepository noteRepository,
+        IUtilisateurCourant utilisateurCourant)
     {
         ArgumentNullException.ThrowIfNull(cocktail, nameof(cocktail));
 
@@ -49,7 +58,9 @@ public class CocktailDetailDto
             ? (await utilisateurRepository.GetByIdAsync(authorId))?.NomAffiche
             : null;
 
-        return new CocktailDetailDto(cocktail, auteur, cocktail.EstModifiablePar(utilisateurCourant.Id));
+        ResumeNotes notes = ResumeNotes.Calculer(await noteRepository.GetByCocktailAsync(cocktail.Id), utilisateurCourant.Id);
+
+        return new CocktailDetailDto(cocktail, auteur, cocktail.EstModifiablePar(utilisateurCourant.Id), notes);
     }
 }
 

@@ -60,4 +60,20 @@ public class CocktailsController(IMediator mediator) : ControllerBase
 
         return NoContent();
     }
+
+    /// <summary>Donne ou change sa note (1 à 5). Renvoie la moyenne à jour. 400 hors bornes, 404 si la recette n'existe pas.</summary>
+    [HttpPut("{id:guid}/note")]
+    public async Task<NotesDto> Noter(Guid id, [FromBody] NoteRequest body, CancellationToken cancellationToken = default)
+    {
+        return await mediator.Send(new NoterCocktailCommand { CocktailId = id, Valeur = body.Valeur }, cancellationToken);
+    }
+
+    /// <summary>Retire sa note. Idempotent.</summary>
+    [HttpDelete("{id:guid}/note")]
+    public async Task<NotesDto> RetirerNote(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await mediator.Send(new RetirerNoteCommand { CocktailId = id }, cancellationToken);
+    }
 }
+
+public record NoteRequest(int Valeur);

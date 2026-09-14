@@ -10,6 +10,18 @@
   border: 1px solid var(--mixo-bordure);
   border-radius: 12px;
 
+  &__entete {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  &__modifier {
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+
   &__surtitre {
     margin: 0 0 0.25rem;
     font-size: 0.875rem;

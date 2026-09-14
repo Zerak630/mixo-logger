@@ -10,6 +10,7 @@ export const routes: Routes = [
 	{
 		path: 'my_bar',
 		loadComponent: () => import('./features/mybar/layout/mybar.layout'),
-		resolve: { bar: myBarResolver }
+		resolve: { bar: myBarResolver },
+		title: 'Mon bar'
 	},
 ];

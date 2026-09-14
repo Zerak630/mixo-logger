@@ -1,0 +1,156 @@
+<form class="edition" [formGroup]="formulaire" (ngSubmit)="enregistrer()" novalidate aria-labelledby="edition-titre">
+  <header class="edition__entete">
+    <p class="edition__surtitre">{{ enEdition() ? 'Modifier la recette' : 'Nouvelle recette' }}</p>
+    <h2 id="edition-titre" class="edition__titre">{{ enEdition() ? cocktail()!.name : 'Ajouter un cocktail' }}</h2>
+  </header>
+
+  @if (erreurServeur(); as erreur) {
+    <p #bandeauErreur class="edition__erreur-globale" role="alert" tabindex="-1">
+      <span class="pi pi-exclamation-triangle" aria-hidden="true"></span>
+      {{ erreur }}
+    </p>
+  }
+
+  <section class="edition__bloc">
+    <div class="champ">
+      <label for="recette-nom" class="champ__label">Nom <span class="champ__requis" aria-hidden="true">*</span></label>
+      <input pInputText id="recette-nom" formControlName="name" autocomplete="off" required
+        [invalid]="aDesErreurs(formulaire.controls.name)"
+        [attr.aria-invalid]="aDesErreurs(formulaire.controls.name)"
+        [attr.aria-describedby]="aDesErreurs(formulaire.controls.name) ? 'recette-nom-erreur' : null" />
+      @if (aDesErreurs(formulaire.controls.name)) {
+        <p id="recette-nom-erreur" class="champ__erreur">
+          @if (formulaire.controls.name.hasError('maxlength')) { 80 caractères au maximum. } @else { Le nom est obligatoire. }
+        </p>
+      }
+    </div>
+
+    <div class="champ">
+      <label for="recette-description" class="champ__label">Description <span class="champ__facultatif">(facultatif)</span></label>
+      <textarea pTextarea id="recette-description" formControlName="description" rows="2" [autoResize]="true"
+        placeholder="Un cocktail rafraîchissant à base de…"></textarea>
+    </div>
+  </section>
+
+  <fieldset class="edition__bloc" formArrayName="ingredients">
+    <legend class="edition__intertitre">Ingrédients <span class="edition__precision">pour un verre</span></legend>
+
+    @if (tentative() && ingredients.length === 0) {
+      <p class="champ__erreur" role="alert">Ajoute au moins un ingrédient.</p>
+    }
+
+    <ul class="lignes">
+      @for (ligne of ingredients.controls; track ligne; let i = $index) {
+        <li class="ligne-ingredient" [formGroupName]="i">
+          <div class="champ ligne-ingredient__nom">
+            <p-autocomplete
+              [inputId]="'ingredient-' + i"
+              [ariaLabel]="'Ingrédient ' + (i + 1)"
+              formControlName="ingredient"
+              optionLabel="name"
+              [suggestions]="suggestions()"
+              (completeMethod)="rechercher($event, i)"
+              [forceSelection]="false"
+              [showEmptyMessage]="false"
+              placeholder="Ingrédient"
+              [invalid]="aDesErreurs(ligne.controls.ingredient) || doublons().has(i)"
+              [fluid]="true" />
+            @if (doublons().has(i)) {
+              <p class="champ__erreur">Déjà dans la recette : fusionne les deux lignes.</p>
+            } @else if (aDesErreurs(ligne.controls.ingredient)) {
+              <p class="champ__erreur">Indique un ingrédient.</p>
+            }
+          </div>
+
+          <div class="champ ligne-ingredient__valeur">
+            <p-inputnumber
+              [inputId]="'valeur-' + i"
+              [ariaLabel]="'Quantité de l\'ingrédient ' + (i + 1)"
+              formControlName="valeur"
+              [minFractionDigits]="0"
+              [maxFractionDigits]="2"
+              [useGrouping]="false"
+              locale="fr-FR"
+              placeholder="Qté"
+              [invalid]="aDesErreurs(ligne.controls.valeur)" />
+            @if (aDesErreurs(ligne.controls.valeur)) {
+              <p class="champ__erreur">Supérieure à 0.</p>
+            }
+          </div>
+
+          <div class="champ ligne-ingredient__unite">
+            <!-- Pas de <label for> : la combobox de p-select est un span, qu'un label n'associe pas. -->
+            <p-select
+              [inputId]="'unite-' + i"
+              [ariaLabel]="'Unité de l\'ingrédient ' + (i + 1)"
+              formControlName="unite"
+              [options]="optionsUniteLibellees()"
+              optionLabel="label"
+              optionValue="value"
+              appendTo="body" />
+          </div>
+
+          <p-button
+            icon="pi pi-trash"
+            severity="secondary"
+            [text]="true"
+            [rounded]="true"
+            [ariaLabel]="'Retirer l\'ingrédient ' + (i + 1)"
+            [disabled]="ingredients.length === 1"
+            (onClick)="retirerIngredient(i)" />
+        </li>
+      }
+    </ul>
+
+    <p-button label="Ajouter un ingrédient" icon="pi pi-plus" severity="secondary" [outlined]="true" (onClick)="ajouterIngredient()" />
+
+    <p class="edition__aide">
+      Les décomptes (feuilles, traits, pièces, pincées) se vérifient par la seule présence de l'ingrédient dans ton bar.
+    </p>
+  </fieldset>
+
+  <fieldset class="edition__bloc" formArrayName="etapes">
+    <legend class="edition__intertitre">Préparation</legend>
+
+    @if (tentative() && etapes.length === 0) {
+      <p class="champ__erreur" role="alert">Ajoute au moins une étape.</p>
+    }
+
+    <ol class="lignes lignes--etapes">
+      @for (etape of etapes.controls; track etape; let i = $index; let premiere = $first; let derniere = $last) {
+        <li class="ligne-etape">
+          <span class="ligne-etape__numero" aria-hidden="true">{{ i + 1 }}</span>
+
+          <div class="champ ligne-etape__texte">
+            <label [for]="'etape-' + i" class="sr-only">Étape {{ i + 1 }}</label>
+            <textarea pTextarea [id]="'etape-' + i" [formControlName]="i" rows="1" [autoResize]="true"
+              placeholder="Décris l'étape…"
+              [invalid]="aDesErreurs(etape)"
+              [attr.aria-invalid]="aDesErreurs(etape)"></textarea>
+            @if (aDesErreurs(etape)) {
+              <p class="champ__erreur">Une étape ne peut pas être vide.</p>
+            }
+          </div>
+
+          <div class="ligne-etape__actions">
+            <p-button icon="pi pi-arrow-up" severity="secondary" [text]="true" [rounded]="true"
+              [ariaLabel]="'Monter l\'étape ' + (i + 1)" [disabled]="premiere" (onClick)="deplacerEtape(i, -1)" />
+            <p-button icon="pi pi-arrow-down" severity="secondary" [text]="true" [rounded]="true"
+              [ariaLabel]="'Descendre l\'étape ' + (i + 1)" [disabled]="derniere" (onClick)="deplacerEtape(i, 1)" />
+            <p-button icon="pi pi-trash" severity="secondary" [text]="true" [rounded]="true"
+              [ariaLabel]="'Retirer l\'étape ' + (i + 1)" [disabled]="etapes.length === 1" (onClick)="retirerEtape(i)" />
+          </div>
+        </li>
+      }
+    </ol>
+
+    <p-button label="Ajouter une étape" icon="pi pi-plus" severity="secondary" [outlined]="true" (onClick)="ajouterEtape()" />
+  </fieldset>
+
+  <footer class="edition__actions">
+    <a pButton [routerLink]="enEdition() ? ['/cocktails', cocktail()!.id] : ['/cocktails']"
+      label="Annuler" severity="secondary" [text]="true"></a>
+    <p-button type="submit" [label]="enEdition() ? 'Enregistrer les modifications' : 'Créer la recette'"
+      icon="pi pi-check" [loading]="enregistrementEnCours()" />
+  </footer>
+</form>

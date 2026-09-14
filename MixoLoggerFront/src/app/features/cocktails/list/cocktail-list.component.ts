@@ -1,6 +1,7 @@
 import { Component, computed, input, ChangeDetectionStrategy, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { ButtonDirective } from '@openng/optimus-ui/button';
 import { ToggleSwitch, ToggleSwitchChangeEvent } from '@openng/optimus-ui/toggleswitch';
 import { CocktailCardComponent } from "../../../components/cocktail-card/cocktail-card.component";
 import { CocktailResume } from '../../../models/cocktail';
@@ -10,7 +11,7 @@ import { CocktailResume } from '../../../models/cocktail';
   templateUrl: './cocktail-list.component.html',
   styleUrls: ['./cocktail-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [CocktailCardComponent, FormsModule, ToggleSwitch, RouterLink]
+  imports: [CocktailCardComponent, FormsModule, ToggleSwitch, RouterLink, ButtonDirective]
 })
 export default class CocktailListComponent {
   /** Déjà triés par l'API : réalisables d'abord, puis par nombre d'ingrédients manquants. */

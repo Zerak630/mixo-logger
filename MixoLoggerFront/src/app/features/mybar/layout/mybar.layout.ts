@@ -13,6 +13,7 @@ import { Observable } from "rxjs";
 import { IngredientReference, LIBELLES_NIVEAU, LigneStock, MyBar, NIVEAUX_STOCK, NiveauStock } from "../../../models/bar";
 import { UniteVolume } from "../../../models/cocktail";
 import { normaliserNom } from "../../../utils/normaliser-nom";
+import { rechercherIngredients } from "../../../utils/recherche-ingredients";
 import { MyBarService } from "../mybar.service";
 
 /** Nombre maximal de suggestions affichées par l'autocomplétion. */
@@ -83,22 +84,11 @@ export default class MyBarLayout {
 		return this.enCours().has(ligne.name);
 	}
 
-	/**
-	 * Recherche sur le nom et sur les alias, sans tenir compte des accents ni de la casse,
-	 * en écartant ce qui est déjà dans le bar. Les correspondances en début de nom passent
-	 * en premier : « gin » doit proposer « Gin » avant « Bière ginger ».
-	 */
+	/** Recherche sur le nom et les alias, en écartant ce qui est déjà dans le bar. */
 	public rechercher(event: AutoCompleteCompleteEvent): void {
-		const requete = normaliserNom(event.query);
 		const dejaPresents = new Set(this.stockList().map(ligne => normaliserNom(ligne.name)));
 
-		const candidats = this.referentiel()
-			.filter(ingredient => !dejaPresents.has(normaliserNom(ingredient.name)))
-			.map(ingredient => ({ ingredient, rang: this.rang(ingredient, requete) }))
-			.filter(candidat => candidat.rang < Number.POSITIVE_INFINITY)
-			.sort((a, b) => a.rang - b.rang || a.ingredient.name.localeCompare(b.ingredient.name));
-
-		this.suggestions.set(candidats.slice(0, SUGGESTIONS_MAX).map(candidat => candidat.ingredient));
+		this.suggestions.set(rechercherIngredients(this.referentiel(), event.query, dejaPresents, SUGGESTIONS_MAX));
 	}
 
 	public ajouter(): void {
@@ -211,16 +201,5 @@ export default class MyBarLayout {
 			actif ? suivant.add(nom) : suivant.delete(nom);
 			return suivant;
 		});
-	}
-
-	/** 0 : le nom commence par la requête ; 1 : un mot du nom ; 2 : un alias ; ∞ : aucune correspondance. */
-	private rang(ingredient: IngredientReference, requete: string): number {
-		const nom = normaliserNom(ingredient.name);
-
-		if (!requete || nom.startsWith(requete)) return 0;
-		if (nom.split(" ").some(mot => mot.startsWith(requete))) return 1;
-		if (ingredient.aliases.some(alias => alias.includes(requete))) return 2;
-
-		return Number.POSITIVE_INFINITY;
 	}
 }

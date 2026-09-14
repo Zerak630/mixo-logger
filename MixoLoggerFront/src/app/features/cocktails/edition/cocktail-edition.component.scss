@@ -1,0 +1,201 @@
+// Palette commune : src/styles.scss (docs/MVP.md §5.1).
+
+.edition {
+  max-width: 48rem;
+  margin: 1.5rem auto 3rem;
+  padding: 1.5rem;
+  color: var(--mixo-texte);
+  background: var(--mixo-surface);
+  border: 1px solid var(--mixo-bordure);
+  border-radius: 12px;
+
+  &__surtitre {
+    margin: 0 0 0.25rem;
+    font-size: 0.875rem;
+    color: var(--mixo-texte-secondaire);
+  }
+
+  &__titre {
+    margin: 0;
+    font-family: "Poppins", sans-serif;
+    font-weight: 700;
+    font-size: 1.75rem;
+  }
+
+  &__erreur-globale {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1.25rem 0 0;
+    padding: 0.75rem 1rem;
+    color: var(--mixo-texte);
+    border: 1px solid var(--mixo-erreur);
+    border-left-width: 4px;
+    border-radius: 8px;
+
+    .pi {
+      color: var(--mixo-erreur);
+    }
+  }
+
+  &__bloc {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+    margin: 1.5rem 0 0;
+    padding: 1.25rem 0 0;
+    border: none;
+    border-top: 1px solid var(--mixo-bordure);
+  }
+
+  // `legend` n'accepte pas bien le flex de son fieldset : on le sort du flux de bordure.
+  &__intertitre {
+    float: left;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    font-size: 1rem;
+    font-weight: 600;
+
+    + * {
+      clear: both;
+    }
+  }
+
+  &__precision {
+    font-weight: 400;
+    font-size: 0.875rem;
+    color: var(--mixo-texte-secondaire);
+  }
+
+  &__aide {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--mixo-texte-secondaire);
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--mixo-bordure);
+
+    a {
+      text-decoration: none;
+    }
+  }
+}
+
+.champ {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+
+  &__label {
+    font-size: 0.875rem;
+    color: var(--mixo-texte-secondaire);
+  }
+
+  &__requis {
+    color: var(--mixo-erreur);
+  }
+
+  &__facultatif {
+    font-size: 0.8125rem;
+  }
+
+  &__erreur {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--mixo-erreur);
+  }
+}
+
+.lignes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ligne-ingredient {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6.5rem 9rem auto;
+  align-items: start;
+  gap: 0.5rem;
+
+  &__valeur ::ng-deep input {
+    width: 100%;
+  }
+
+  &__unite ::ng-deep .p-select {
+    width: 100%;
+  }
+}
+
+.ligne-etape {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.5rem;
+
+  &__numero {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2.5rem;
+    font-weight: 700;
+    color: var(--mixo-accent);
+  }
+
+  &__texte textarea {
+    width: 100%;
+  }
+
+  &__actions {
+    display: flex;
+  }
+}
+
+// Sur mobile, la quantité et l'unité passent sous le nom de l'ingrédient.
+@media (max-width: 40rem) {
+  .edition {
+    margin: 0.5rem;
+    padding: 1rem;
+  }
+
+  .ligne-ingredient {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-areas:
+      "nom nom retirer"
+      "valeur unite unite";
+
+    &__nom { grid-area: nom; }
+    &__valeur { grid-area: valeur; }
+    &__unite { grid-area: unite; }
+    p-button { grid-area: retirer; }
+  }
+
+  .ligne-etape {
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    grid-template-areas:
+      "numero texte"
+      ". actions";
+
+    &__numero { grid-area: numero; }
+    &__texte { grid-area: texte; }
+    &__actions { grid-area: actions; justify-content: flex-end; }
+  }
+
+  .edition__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}

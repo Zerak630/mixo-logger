@@ -1,12 +1,16 @@
 <header class="entete">
   <h2>Liste des cocktails</h2>
 
-  <div class="filtre">
-    <p-toggleswitch
-      inputId="filtre-realisables"
-      [ngModel]="seulementRealisables()"
-      (onChange)="basculerFiltre($event)" />
-    <label for="filtre-realisables">Seulement ce que je peux faire</label>
+  <div class="entete__outils">
+    <div class="filtre">
+      <p-toggleswitch
+        inputId="filtre-realisables"
+        [ngModel]="seulementRealisables()"
+        (onChange)="basculerFiltre($event)" />
+      <label for="filtre-realisables">Seulement ce que je peux faire</label>
+    </div>
+
+    <a pButton routerLink="new" label="Ajouter une recette" icon="pi pi-plus" class="entete__ajouter"></a>
   </div>
 
   <p class="entete__compte" aria-live="polite">

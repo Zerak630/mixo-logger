@@ -1,6 +1,11 @@
 <article class="detail" aria-labelledby="detail-nom">
-  <p class="detail__surtitre">Détail du cocktail</p>
-  <h2 id="detail-nom" class="detail__nom">{{ cocktail().name }}</h2>
+  <div class="detail__entete">
+    <div>
+      <p class="detail__surtitre">Détail du cocktail</p>
+      <h2 id="detail-nom" class="detail__nom">{{ cocktail().name }}</h2>
+    </div>
+    <a pButton routerLink="edit" label="Modifier" icon="pi pi-pencil" severity="secondary" [outlined]="true" class="detail__modifier"></a>
+  </div>
 
   @if (cocktail().description) {
     <p class="detail__description">{{ cocktail().description }}</p>
@@ -31,10 +36,10 @@
   <section class="detail__bloc" aria-labelledby="detail-ingredients">
     <h3 id="detail-ingredients" class="detail__intertitre">Ingrédients</h3>
     <ul class="ingredients">
-      @for (ingredient of cocktail().ingredients; track ingredient.ingredient.id) {
+      @for (ingredient of cocktail().ingredients; track ingredient.ingredientId) {
         <li class="ingredients__ligne">
-          <span class="ingredients__nom">{{ ingredient.ingredient.name }}</span>
-          <span class="ingredients__dose">{{ nbVerres() * ingredient.volume.value }} {{ ingredient.volume.unit }}</span>
+          <span class="ingredients__nom">{{ ingredient.name }}</span>
+          <span class="ingredients__dose">{{ doseAffichee(ingredient) }}</span>
         </li>
       }
     </ul>
@@ -44,7 +49,7 @@
     <h3 id="detail-etapes" class="detail__intertitre">Préparation</h3>
     @if (etapes().length) {
       <ol class="etapes">
-        @for (etape of etapes(); track etape.id) {
+        @for (etape of etapes(); track etape.ordre) {
           <li class="etapes__etape">{{ etape.description }}</li>
         }
       </ol>

@@ -3,7 +3,7 @@ import { Guid } from "../core/base-models";
 export interface Cocktail {
 	id: Guid;
 	name: string;
-	description: string;
+	description: string | null;
 }
 
 /** Un cocktail de la liste, évalué contre le bar courant (F4). */
@@ -18,30 +18,42 @@ export interface Manque {
 	raison: "Absent" | "Insuffisant";
 }
 
-export interface CocktailComponent {
-	ingredient: Ingredient;
-	volume: Volume;
-}
+/** Détail d'une recette, tel que renvoyé par `GET /api/cocktails/{id}`. */
 export interface CocktailDetail extends Cocktail {
-	ingredients: CocktailComponent[];
-	/**
-	 * Nom imposé par l'API, qui sérialise encore l'entité de domaine `Cocktail` telle
-	 * quelle (docs/MVP.md §7, B5). Il changera probablement avec l'introduction d'un DTO.
-	 */
-	etapeRecettes: EtapeRecette[];
+	ingredients: DoseIngredient[];
+	/** Dans l'ordre de préparation. */
+	etapes: Etape[];
 }
 
-export interface EtapeRecette {
-	id: Guid;
-	description: string;
+/** Un ingrédient de la recette et sa dose pour un verre. */
+export interface DoseIngredient {
+	ingredientId: Guid;
+	/** Nom canonique du référentiel : « angostura » saisi devient « Bitters ». */
+	name: string;
+	valeur: number;
+	unite: UniteDose;
+}
+
+export interface Etape {
 	/** Commence à 1. */
 	ordre: number;
+	description: string;
 }
 
-export interface Ingredient {
-	id: Guid;
+/** Contenu envoyé à la création (`POST`) comme à l'édition (`PUT`). */
+export interface RecetteSaisie {
 	name: string;
+	description: string | null;
+	ingredients: { name: string; valeur: number; unite: UniteDose }[];
+	/** Dans l'ordre : leur position fait leur numéro. */
+	etapes: string[];
 }
+
+/**
+ * Unités de dose acceptées par l'API (`GET /api/cocktails/unites`) : volumes, puis
+ * décomptes. Un décompte se vérifie par la seule présence de l'ingrédient dans le bar.
+ */
+export type UniteDose = "mL" | "cL" | "dL" | "L" | "piece" | "feuille" | "trait" | "pincee";
 
 export interface Volume {
 	value: number;

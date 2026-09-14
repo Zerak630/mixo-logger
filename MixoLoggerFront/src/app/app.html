@@ -1,13 +1,22 @@
 <header>
-	<p-menubar [model]="menuItems">
+	<!-- Sans session, pas de navigation : seule la page de connexion est accessible (F6). -->
+	<p-menubar [model]="userService.isConnected() ? menuItems : []">
 		<ng-template #start>
 			<h1>MixoLogger</h1>
 		</ng-template>
 		<ng-template #end>
-			@if(userService.isConnected()) {
-				<p-avatar image="https://primefaces.org/cdn/primeng/images/demo/avatar/amyelsner.png" shape="circle" />
-			} @else {
-				<login-modal/>
+			@if (userService.utilisateur(); as utilisateur) {
+				<div class="session">
+					<p-avatar [label]="userService.initiales()" shape="circle" aria-hidden="true" />
+					<span class="session__nom">{{ utilisateur.nomAffiche }}</span>
+					<p-button
+						label="Se déconnecter"
+						icon="pi pi-sign-out"
+						severity="secondary"
+						[text]="true"
+						[loading]="deconnexionEnCours()"
+						(onClick)="seDeconnecter()" />
+				</div>
 			}
 		</ng-template>
 	</p-menubar>

@@ -1,0 +1,43 @@
+<section class="connexion">
+  <form class="connexion__carte" [formGroup]="formulaire" (ngSubmit)="seConnecter()" novalidate aria-labelledby="connexion-titre">
+    <h2 id="connexion-titre" class="connexion__titre">Connexion</h2>
+    <p class="connexion__intro">MixoLogger est réservé à ses membres. Les comptes sont créés par l'administrateur.</p>
+
+    @if (erreur(); as message) {
+      <p class="connexion__erreur" role="alert">
+        <span class="pi pi-exclamation-triangle" aria-hidden="true"></span>
+        {{ message }}
+      </p>
+    }
+
+    <div class="champ">
+      <label for="connexion-identifiant" class="champ__label">Identifiant</label>
+      <input #champIdentifiant pInputText id="connexion-identifiant" formControlName="identifiant"
+        autocomplete="username" autocapitalize="none" spellcheck="false" required [fluid]="true"
+        [attr.aria-invalid]="tentative() && formulaire.controls.identifiant.invalid" />
+    </div>
+
+    <div class="champ">
+      <label for="connexion-mot-de-passe" class="champ__label">Mot de passe</label>
+      <div class="champ__mot-de-passe">
+        <input #champMotDePasse pInputText id="connexion-mot-de-passe" formControlName="motDePasse"
+          [type]="motDePasseVisible() ? 'text' : 'password'"
+          autocomplete="current-password" required [fluid]="true"
+          [attr.aria-invalid]="tentative() && formulaire.controls.motDePasse.invalid" />
+        <p-button
+          [icon]="motDePasseVisible() ? 'pi pi-eye-slash' : 'pi pi-eye'"
+          severity="secondary"
+          [text]="true"
+          [ariaLabel]="motDePasseVisible() ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+          [attr.aria-pressed]="motDePasseVisible()"
+          (onClick)="motDePasseVisible.set(!motDePasseVisible())" />
+      </div>
+    </div>
+
+    @if (tentative() && formulaire.invalid) {
+      <p class="champ__erreur">Renseigne ton identifiant et ton mot de passe.</p>
+    }
+
+    <p-button type="submit" label="Se connecter" icon="pi pi-sign-in" [loading]="envoiEnCours()" [fluid]="true" />
+  </form>
+</section>

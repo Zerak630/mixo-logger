@@ -1,0 +1,21 @@
+.session {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+
+	&__nom {
+		color: var(--mixo-texte);
+		white-space: nowrap;
+	}
+}
+
+// Sur mobile, le nom prend trop de place à côté du bouton : l'avatar suffit.
+@media (max-width: 40rem) {
+	.session__nom {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+	}
+}

@@ -1,9 +1,10 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
+import { ApplicationConfig, inject, provideAppInitializer, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 
 import { provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
 import { provideOptimus } from '@openng/optimus-ui/config';
 import { routes } from './app.routes';
+import AuthService from './core/auth.service';
 import { httpInterceptor } from './core/http-interceptor';
 import { MyPreset } from './styles/customTheme';
 
@@ -13,6 +14,9 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withXhr(), withInterceptors([httpInterceptor])),
+    // Avant la première navigation : sait-on déjà qui est connecté (cookie encore valide) ?
+    // Sans cela, le garde de session renverrait vers la connexion à chaque rechargement.
+    provideAppInitializer(() => inject(AuthService).restaurerSession()),
     // Pas de provideAnimationsAsync() : OptimusUI (comme PrimeNG 21 dont il est issu)
     // anime ses composants via @openng/optimus-ui-motion, sans @angular/animations.
     provideOptimus({

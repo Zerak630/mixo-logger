@@ -21,7 +21,7 @@
 | Sujet | Décision |
 |-------|----------|
 | **Hébergement** | **Serveur centralisé** — une instance unique, les 5 utilisateurs s'y connectent. Le déploiement lui-même est repoussé. |
-| **Persistance** | **Repoussée.** On reste sur du stockage en mémoire tant que le besoin ne se fait pas sentir. |
+| **Persistance** | **SQLite + EF Core** (F10, 15/09/2026) : un fichier, rien à installer, suffisant pour une instance unique et quelques utilisateurs. Passer à PostgreSQL = changer de fournisseur et régénérer les migrations. |
 | **Priorité immédiate** | **Un environnement de développement complet et fonctionnel** sur la stack cible. |
 | **Stack** | Angular 22 + OptimusUI (composants complexes) / .NET 11 — cf. §2. |
 | **CSS** | Intervention manuelle assumée par l'auteur ; OptimusUI sert surtout aux composants riches (tables, overlays, formulaires). |
@@ -30,7 +30,7 @@
 
 | # | Fonctionnalité | Priorité | État |
 |---|----------------|----------|------|
-| F1 | Consulter la liste des cocktails | Must | ✅ Fait (données en mémoire) — branché sur l'API le 13/09/2026 : l'écran affichait jusque-là une liste codée en dur |
+| F1 | Consulter la liste des cocktails | Must | ✅ Fait (données en base SQLite depuis F10) — branché sur l'API le 13/09/2026 : l'écran affichait jusque-là une liste codée en dur |
 | F2 | Consulter le détail d'un cocktail (ingrédients + étapes) | Must | ✅ Fait — ingrédients (doses × nombre de verres) et étapes ordonnées |
 | F3 | Gérer « Mon Bar » (stock d'ingrédients) | Must | ✅ Écran complet : ajout avec autocomplétion, niveau par ligne, retrait, volume exact optionnel |
 | F4 | Savoir quels cocktails sont réalisables avec le stock | Must | ✅ Badge sur chaque carte (réalisable / ce qui manque), filtre « Seulement ce que je peux faire », tri réalisables d'abord |
@@ -39,15 +39,11 @@
 | F7 | Noter un cocktail (⭐) | Should | ✅ Note de 1 à 5 par utilisateur (modifiable, retirable), moyenne et nombre de notes sur la carte et le détail |
 | F8 | Recherche / filtres | Should | ✅ Recherche par nom, description ou ingrédient (alias compris, sans accents ni casse, tous les mots requis) ; filtres « Seulement ce que je peux faire », « Mes recettes », note minimale |
 | F9 | Photo de cocktail | Could | ❌ Non traité (stockage non décidé) |
-| F10 | Persistance des données entre deux redémarrages | Later | ⏸️ Volontairement repoussée — tout est en mémoire |
+| F10 | Persistance des données entre deux redémarrages | Later | ✅ SQLite + EF Core : recettes, référentiel d'ingrédients, bars et notes survivent au redémarrage. Migrations appliquées au démarrage, jeu initial inséré une seule fois (§10.2). Les comptes restent en configuration |
 
-> ⚠️ Conséquence assumée de F10 : toute recette ajoutée et tout stock consommé disparaissent au
-> redémarrage de l'API. Sur un serveur centralisé, cela veut dire que **le redémarrage efface les
-> données de tout le monde d'un coup** — acceptable en phase de développement, à revoir avant
-> d'ouvrir l'accès aux 4 autres utilisateurs. Pour limiter les dégâts entre-temps, garder le seed
-> riche (§ `CocktailRepository.DEFAULT_COCKTAILS`) et isoler les repositories derrière leurs
-> interfaces de `Domain/Interfaces/Repositories` : le passage à une vraie base ne devra toucher
-> que `Infrastructure`.
+> Les données sont dans **un seul fichier** (`MixoLoggerBack/Web/Donnees/mixologger.db` par défaut,
+> hors dépôt). Le sauvegarder, c'est copier ce fichier **API arrêtée** — ou ses trois fichiers
+> `.db`, `.db-wal`, `.db-shm` ensemble. Aucune sauvegarde automatique n'est en place.
 
 ---
 
@@ -63,7 +59,7 @@
 | Backend | **.NET 11** (préversion jusqu'au 10/11/2026) | ✅ `net11.0`, SDK épinglé par `global.json` (A1) |
 | Médiateur | **MediatR 13** (CQRS : Commands / Queries) | ✅ En place |
 | API | REST + Swagger / OpenAPI | ✅ En place |
-| Persistance | **Aucune** (repositories `static` en mémoire) — choix assumé, cf. F10 | ✅ Conforme |
+| Persistance | **SQLite** via EF Core 11 preview 7 (même préversion que le SDK), migrations au démarrage | ✅ F10 |
 | Authentification | Cookie de session ASP.NET Core, sans Identity complet (§8) | ✅ F6 |
 | Hébergement | Serveur centralisé — **repoussé** | ❌ Rien |
 
@@ -83,15 +79,17 @@
   exigent `@angular/core ^22.1.4` : Angular 22 est donc un prérequis, pas une option.
 - **.NET 11** — ⚠️ **pas encore GA.** Dernière préversion `11.0.0-preview.7` (11 août 2026), GA le
   **10 novembre 2026** (STS, supportée jusqu'au 09/11/2028). Travailler en préversion est
-  acceptable ici parce que le déploiement est repoussé au-delà de la GA et que l'absence d'EF Core
-  évite le principal point de friction des previews. **Épingler le SDK dans un `global.json`**
+  acceptable ici parce que le déploiement est repoussé au-delà de la GA. EF Core est épinglé sur la
+  même préversion que le SDK (`11.0.0-preview.7.26381.103`, paquets et outil `dotnet-ef`) : les
+  monter ensemble à chaque changement de préversion. **Épingler le SDK dans un `global.json`**
   (§10.1) pour éviter qu'une nouvelle preview change le comportement sans prévenir.
 
 ### 2.2 Reporté (à ne pas traiter maintenant)
 
 | Sujet | Quand | Pourquoi c'est reporté sans risque |
 |-------|-------|------------------------------------|
-| PostgreSQL + EF Core + migrations | Quand la perte de données au redémarrage devient gênante | Les repositories sont déjà derrière des interfaces du `Domain` : seul `Infrastructure` changera |
+| PostgreSQL | Si SQLite ne suffit plus (plusieurs instances, gros volume, écritures très concurrentes) | EF Core est en place : changer de fournisseur et régénérer les migrations, seul `Infrastructure` change |
+| Sauvegardes automatiques de la base | Avec le déploiement | En local, copier le fichier suffit |
 | Docker / `docker-compose` | Avec le déploiement | Le dev tourne très bien en `dotnet run` + `npm start` |
 | Déploiement sur le serveur centralisé | Après la GA de .NET 11 (novembre 2026) | Évite de déployer une préversion |
 | HTTPS, reverse proxy, nom de domaine | Idem | — |
@@ -106,13 +104,22 @@ MixoLoggerBack/
 │   ├── Utilisateurs/# Utilisateur (F6)
 │   └── Units/       # VolumeConverter
 ├── Application/     # Use cases MediatR (Commands / Queries) + DTOs
-├── Infrastructure/  # Repositories en mémoire, référentiel d'ingrédients, hachage des mots de passe
+├── Infrastructure/  # Persistance SQLite (EF Core), repositories, hachage des mots de passe
+│   └── Persistance/ # DbContext, modèles de stockage, traduction vers le domaine, migrations, jeu initial
 ├── Web/             # Controllers, Program.cs, Swagger, sécurité (cookie, CORS, limitation)
 ├── Domain.Tests/    # Tests unitaires du domaine
-└── Web.Tests/       # Tests d'intégration : API complète en mémoire (authentification)
+└── Web.Tests/       # Tests d'intégration : API complète, base SQLite temporaire par fixture
 ```
 
-Règle de dépendance : `Web → Application → Domain`, `Infrastructure → Domain`.
+Règle de dépendance : `Web → Application → Domain`, `Infrastructure → Domain`. Depuis F10,
+`Application` ne référence plus `Infrastructure` : les dépôts sont enregistrés par
+`AddPersistance`, appelé depuis `Web`.
+
+**Persistance** : le domaine n'est pas mappé directement par EF Core. `Infrastructure/Persistance`
+a ses propres modèles de stockage (`IngredientDonnees`, `CocktailDonnees`, `BarDonnees`…), traduits
+vers et depuis le domaine par les dépôts (`Traduction.cs`). Le domaine garde ses objets immuables et
+ses constructeurs validants ; il expose seulement des fabriques `Reconstituer` pour rendre un objet
+relu avec son identifiant, sa version ou sa date d'origine.
 `Domain` ne dépend de rien.
 
 ### 2.4 Architecture front
@@ -202,7 +209,8 @@ erDiagram
 - **`Cocktail` est immuable** : `Modifier()` renvoie une nouvelle instance de même `Id`, substituée
   d'un bloc par le dépôt. Règles : nom et étapes non vides, au moins un ingrédient et une étape, pas
   deux fois le même ingrédient (alias compris). L'unicité du nom de recette (sans accents ni casse) est
-  vérifiée par l'application, sans atomicité — deux créations simultanées du même nom peuvent passer.
+  vérifiée par l'application, puis garantie par un index unique en base (F10) : de deux créations
+  simultanées du même nom, une seule passe, l'autre reçoit un `409`.
 
 ### 3.2 À ajouter pour couvrir les objectifs
 
@@ -240,7 +248,7 @@ Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
 | `GET` | `/api/cocktails/unites` | — | `string[]` | `mL`, `cL`, `dL`, `L`, `piece`, `feuille`, `trait`, `pincee` |
 | `POST` | `/api/cocktails` | `RecetteSaisie` | `201` + `CocktailDetailDto` | `{ name, description?, ingredients: [{ name, valeur, unite }], etapes: string[] }` ; ingrédients par nom (alias compris, créés si inconnus **une fois la recette validée**) ; l'utilisateur connecté devient l'auteur ; `400` contenu invalide, `409` nom déjà pris |
 | `PUT` | `/api/cocktails/{id}` | `RecetteSaisie` | `CocktailDetailDto` | Remplace tout le contenu ; mêmes règles ; **`403` si l'utilisateur n'est pas l'auteur** (vérifié avant le contenu) ; `404` si absent. Pas de contrôle de version : deux éditions simultanées gardent la dernière |
-| `DELETE` | `/api/cocktails/{id}` | — | `204` | **`403` si l'utilisateur n'est pas l'auteur** ; `404` si absent ; `409` si la recette a été modifiée entre la lecture et la suppression. Ses notes sont supprimées avec elle |
+| `DELETE` | `/api/cocktails/{id}` | — | `204` | **`403` si l'utilisateur n'est pas l'auteur** ; `404` si absent. Ses lignes, étapes et notes sont supprimées avec elle (cascade en base) |
 | `POST` | `/api/auth/connexion` | `{ identifiant, motDePasse }` | `UtilisateurDto` + cookie | **Anonyme.** `401` même réponse pour identifiant inconnu et mauvais mot de passe ; `429` au-delà de 5 essais par minute et par IP |
 | `POST` | `/api/auth/deconnexion` | — | `204` | **Anonyme** (une session expirée doit pouvoir se fermer) |
 | `GET` | `/api/auth/moi` | — | `UtilisateurDto` | `{ id, identifiant, nomAffiche }` ; `401` sans session |
@@ -582,12 +590,13 @@ Branche : `feat/mon-bar`, rebasée sur le lot A.
 | **C1** | ~~Modèle `User` + auth back réelle + CORS restreint~~ ✅ livré avec F6 (cookie plutôt que JWT, cf. §8). `Utilisateur.Id` est dérivé de l'identifiant, donc stable d'un redémarrage à l'autre : prêt pour C2 |
 | **C2** | ✅ `Bar.OwnerId` (un bar par utilisateur, vide au départ) et `Cocktail.AuthorId`. Les handlers obtiennent l'appelant par `IUtilisateurCourant` (lu dans la session, jamais dans le corps de la requête). Détail de recette : `auteur` + `modifiable` ; front : « Modifier » et « Supprimer » (avec confirmation) visibles pour l'auteur seul, page d'édition d'une recette d'autrui remplacée par une explication. 7 tests d'intégration à deux comptes, vérifiés par mutation |
 | **C3** | ~~Création / édition de recette (F5)~~ ✅ livrée avant le lot C ; auteur, règle « seul l'auteur modifie » et suppression ✅ ajoutés avec C2. Formulaire en *Reactive Forms* et non en *Signal Forms* : les composants OptimusUI sont des `ControlValueAccessor`, et Mon Bar comme la connexion utilisent déjà les *Reactive Forms* |
-| **C4** | ✅ Notes (F7) et recherche (F8). Recherche et filtres côté front (`utils/recherche-cocktails.ts`) : la liste complète est déjà chargée, à revoir si le catalogue dépasse quelques centaines de recettes. 19 tests domaine et intégration sur les notes, vérifiés par mutation. **Limites** : notes en mémoire comme le reste (F10) ; l'auteur peut noter sa propre recette ; une note posée pendant la suppression concurrente de la recette peut rester orpheline (invisible, sans effet) |
+| **C4** | ✅ Notes (F7) et recherche (F8). Recherche et filtres côté front (`utils/recherche-cocktails.ts`) : la liste complète est déjà chargée, à revoir si le catalogue dépasse quelques centaines de recettes. 19 tests domaine et intégration sur les notes, vérifiés par mutation. **Limite** : l'auteur peut noter sa propre recette. (Depuis F10, les notes sont persistées et supprimées en cascade avec leur recette : plus de note orpheline possible.) |
 | **C5** | Images (F9) |
 
 ### Lot D — Reporté
 
-Persistance (PostgreSQL + EF Core), Docker, déploiement sur le serveur centralisé. Cf. §2.2.
+~~Persistance~~ ✅ livrée en SQLite (F10). Restent : Docker, déploiement sur le serveur centralisé,
+sauvegardes de la base ; PostgreSQL seulement si SQLite ne suffit plus. Cf. §2.2.
 
 ---
 
@@ -679,6 +688,29 @@ alors de nom).
 
 Autres réglages, facultatifs : `Front:Origines` (origines autorisées par CORS, par défaut
 `http://localhost:4200`) et `Securite:TentativesDeConnexionParMinute` (par défaut 5).
+
+#### Base de données (F10)
+
+Rien à installer ni à lancer : au démarrage, l'API crée le fichier SQLite s'il n'existe pas, applique
+les migrations en attente, puis insère le jeu initial (référentiel d'ingrédients et 5 recettes
+d'origine) **uniquement si la base est vide**.
+
+- Emplacement : `ConnectionStrings:MixoLogger`, par défaut `Data Source=Donnees/mixologger.db`. Un
+  chemin relatif part du dossier `MixoLoggerBack/Web`, quel que soit le dossier d'où l'API est lancée.
+  Sur le serveur : `ConnectionStrings__MixoLogger`, idéalement vers un dossier sauvegardé.
+- Repartir de zéro en local : arrêter l'API, supprimer le dossier `MixoLoggerBack/Web/Donnees`, relancer.
+- Les tests d'intégration utilisent chacun une base temporaire et ne touchent jamais celle-ci.
+
+Faire évoluer le schéma : modifier `Infrastructure/Persistance` (modèles ou `MixoLoggerDbContext`),
+puis générer une migration avec l'outil local `dotnet-ef` (déclaré dans `dotnet-tools.json`, à la
+racine du dépôt — `dotnet tool restore` l'installe) :
+
+```bash
+dotnet tool run dotnet-ef migrations add NomDeLaMigration --project MixoLoggerBack/Infrastructure --startup-project MixoLoggerBack/Infrastructure --output-dir Persistance/Migrations
+```
+
+Relire le fichier généré avant de le committer : la migration s'appliquera toute seule au prochain
+démarrage, sur toutes les bases.
 
 ### 10.3 Migration PrimeNG → OptimusUI
 

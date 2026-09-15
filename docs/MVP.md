@@ -67,8 +67,7 @@
 
 - **Angular 22** — sorti le 3 juin 2026. Apports directement utiles ici : **Signal Forms** stables
   (le formulaire de recette F5 en est le cas d'usage type), **zoneless** par défaut, et **Angular
-  Aria** pour les primitives accessibles. Le front est déjà en signals (`toggle-signal`,
-  `UserService`) et déjà zoneless (`provideZonelessChangeDetection()` dans `app.config.ts`, qui
+  Aria** pour les primitives accessibles. Le front est déjà en signals (`UserService`, écrans) et déjà zoneless (`provideZonelessChangeDetection()` dans `app.config.ts`, qui
   devient redondant en v22) : la marche est courte. Les migrations automatiques de la v22 ont
   volontairement conservé le comportement antérieur : `ChangeDetectionStrategy.Eager` sur 5
   composants et `withXhr()` sur `provideHttpClient`. Passer à `OnPush` et au backend `fetch` est un
@@ -126,12 +125,12 @@ relu avec son identifiant, sa version ou sa date d'origine.
 
 ```
 MixoLoggerFront/src/app/
-├── core/         # AuthService, UserService (état de session), gardes de session, ConfigService, http-interceptor
+├── core/         # AuthService, UserService (état de session), gardes de session, ConfigService, http-interceptor, PartageService
 ├── features/     # connexion/, cocktails/ (list, detail, edition, service, resolver, routes), mybar/
 ├── components/   # cocktail-card
 ├── models/       # types partagés
 ├── styles/       # customTheme.ts (preset de thème OptimusUI)
-└── utils/        # toggle-signal, normaliser-nom, recherche-ingredients, libelle-dose
+└── utils/        # normaliser-nom, recherche-ingredients, recherche-cocktails, libelle-dose, libelle-notes, teinte-cocktail
 ```
 
 **Session côté front** : l'état (`UserService`) n'est qu'un reflet du cookie HttpOnly, illisible par le
@@ -333,13 +332,28 @@ accents et garder `#F5F5F5` pour le texte.
 
 | Écran | Route | État |
 |-------|-------|------|
-| Liste des cocktails | `/cocktails` | ✅ badges de faisabilité et filtre (F4) |
-| Détail d'un cocktail | `/cocktails/:id` | ✅ ingrédients, étapes, nombre de verres, préparation |
+| Liste des cocktails | `/cocktails` | ✅ badges de faisabilité, recherche et filtres (F4, F8) |
+| Détail d'un cocktail | `/cocktails/:id` | ✅ ingrédients, étapes, notes, nombre de verres, préparation, partage |
 | Mon Bar | `/my_bar` | ✅ gestion complète du stock (F3) |
 | Ajout / édition de recette | `/cocktails/new`, `/cocktails/:id/edit` | ✅ (F5) |
 | Connexion | `/connexion` | ✅ seule page accessible sans session (F6) |
 
-Composants clés : `cocktail-card` (image, nom, note).
+Le menu ne mène qu'à ces écrans (« Cocktails », « Mon bar ») ; une adresse inconnue renvoie à la liste.
+Aucun élément factice ni ressource externe : les notifications passent par le toast global
+(`MessageService`, fourni à la racine dans `app.config.ts`), jamais par `alert()`.
+
+**Carte cocktail** (`components/cocktail-card`) :
+
+- **Visuel** : en attendant les photos (F9), un dégradé dont la teinte est tirée du nom
+  (`utils/teinte-cocktail.ts`, stable d'un affichage à l'autre) et un verre dessiné en SVG.
+- **Navigation** : le nom est un vrai lien (`routerLink`) étendu à toute la carte ; les boutons sont à
+  côté du lien, pas dedans (un bouton imbriqué dans un lien est invalide et mal annoncé).
+- **Actions**, visibles au survol ou au focus clavier, en permanence sur écran tactile :
+  « Partager » et « Réaliser ». « Réaliser » prépare un verre **après confirmation** (le stock est
+  décompté), est désactivé si le cocktail n'est pas réalisable, puis la liste se recharge.
+- **Partager** (`core/partage.service.ts`, aussi sur le détail) : feuille de partage du système sur
+  écran tactile, copie du lien ailleurs ; le message rappelle que seuls les membres connectés
+  peuvent l'ouvrir. Si le presse-papiers est refusé, le lien est affiché à copier à la main.
 
 **Écran Mon Bar (F3)** — comportements retenus :
 
@@ -768,9 +782,9 @@ Ce que le schematic a fait seul, et qui s'est vérifié juste :
 OptimusUI 2 ne fournit **aucune** migration depuis la 1.x (`migrations.json` vide) : la seule
 vérification valable est à l'exécution (§10.4).
 
-**Reste signalé** : `app.html` affiche un avatar de démonstration chargé depuis le CDN de
-PrimeFaces (`primefaces.org/cdn/primeng/images/demo/...`). Préexistant, mais fragile et sans rapport
-avec l'application.
+~~**Reste signalé** : avatar de démonstration chargé depuis le CDN de PrimeFaces.~~ ✅ Remplacé par
+les initiales de l'utilisateur connecté (F6). Depuis, plus aucune ressource externe dans le front :
+la photo Unsplash des cartes a laissé place à un visuel généré.
 
 ### 10.4 Validation de bout en bout (A5)
 

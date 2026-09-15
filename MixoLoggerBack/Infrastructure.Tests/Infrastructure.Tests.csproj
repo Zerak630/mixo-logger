@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <!-- xUnit v3 : les projets de test sont des exécutables (cf. Domain.Tests). -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <!--
+    Tests de l'infrastructure sur une vraie base SQLite (fichier temporaire), montée par le même
+    chemin que l'API : AddPersistance puis MettreAJourBaseAsync. Pas de fournisseur « en mémoire »
+    d'EF Core : il n'applique ni les contraintes, ni les transactions, ni les suppressions en cascade.
+  -->
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

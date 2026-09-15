@@ -53,6 +53,22 @@ public class Bar : IEntity
         return copie;
     }
 
+    /// <summary>Bar relu depuis le stockage : identité, version et lignes telles qu'enregistrées.</summary>
+    public static Bar Reconstituer(Guid id, Guid ownerId, DateTime createdAt, int version, IEnumerable<KeyValuePair<Ingredient, LigneStock>> stock)
+    {
+        ArgumentNullException.ThrowIfNull(stock, nameof(stock));
+
+        Bar bar = new(ownerId) { Id = id, CreatedAt = createdAt, Version = version };
+
+        foreach ((Ingredient ingredient, LigneStock ligne) in stock)
+        {
+            ArgumentNullException.ThrowIfNull(ingredient, nameof(stock));
+            bar._stock[ingredient] = ligne ?? throw new ArgumentNullException(nameof(stock));
+        }
+
+        return bar;
+    }
+
     /// <summary>
     /// Déclare la possession d'un ingrédient, sans suivi de volume. C'est le geste
     /// par défaut : « j'ai du rhum blanc ».

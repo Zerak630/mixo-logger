@@ -17,6 +17,15 @@ public class Note
     public DateTime NoteeLe { get; }
 
     public Note(Guid cocktailId, Guid utilisateurId, int valeur)
+        : this(cocktailId, utilisateurId, valeur, DateTime.UtcNow)
+    {
+    }
+
+    /// <summary>Note relue depuis le stockage, avec sa date d'origine.</summary>
+    public static Note Reconstituer(Guid cocktailId, Guid utilisateurId, int valeur, DateTime noteeLe) =>
+        new(cocktailId, utilisateurId, valeur, noteeLe);
+
+    private Note(Guid cocktailId, Guid utilisateurId, int valeur, DateTime noteeLe)
     {
         if (cocktailId == Guid.Empty)
             throw new ArgumentException("Le cocktail noté est invalide.", nameof(cocktailId));
@@ -28,7 +37,7 @@ public class Note
         CocktailId = cocktailId;
         UtilisateurId = utilisateurId;
         Valeur = valeur;
-        NoteeLe = DateTime.UtcNow;
+        NoteeLe = noteeLe;
     }
 }
 

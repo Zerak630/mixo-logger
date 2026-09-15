@@ -16,10 +16,11 @@ public class ProprietairesTests : IClassFixture<ProprietairesTests.ApiDeTest>
 
     private static CancellationToken Jeton => TestContext.Current.CancellationToken;
 
-    public class ApiDeTest : WebApplicationFactory<Program>
+    public class ApiDeTest : ApiAvecBaseTemporaire
     {
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {
+            base.ConfigureWebHost(builder);
             builder.UseSetting("Comptes:0:Identifiant", "alice");
             builder.UseSetting("Comptes:0:NomAffiche", "Alice");
             builder.UseSetting("Comptes:0:MotDePasse", MotDePasse);

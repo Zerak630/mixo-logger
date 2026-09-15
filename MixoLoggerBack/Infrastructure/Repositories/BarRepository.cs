@@ -1,56 +1,85 @@
 using Domain.Interfaces.Repositories;
 using Domain.MyBar;
+using Infrastructure.Persistance;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repositories;
 
-/// <summary>Un bar par utilisateur, en mémoire, indexé par <see cref="Bar.OwnerId"/>.</summary>
-public class BarRepository : IBarRepository
+/// <summary>Un bar par utilisateur, indexé par <see cref="Bar.OwnerId"/>.</summary>
+public class BarRepository(MixoLoggerDbContext db) : IBarRepository
 {
-    private static readonly Lock _verrou = new();
-    private static readonly Dictionary<Guid, Bar> _bars = [];
-
     /// <summary>
-    /// Renvoie une copie : chaque requête travaille sur sa propre instance et publie
-    /// son résultat via <see cref="SaveAsync"/>. Sans cela, deux requêtes concurrentes
-    /// mutent le même dictionnaire (cf. docs/MVP.md §7, B2).
+    /// Renvoie une copie de travail, que la requête modifie puis publie via <see cref="SaveAsync"/>
+    /// (cf. docs/MVP.md §7, B2). Consulter son bar ne crée rien : un bar jamais enregistré
+    /// est rendu vide, en version 0.
     /// </summary>
-    /// <remarks>
-    /// Un bar vide n'est pas stocké à la simple lecture : consulter son bar ne crée rien.
-    /// </remarks>
-    public Task<Bar> GetForOwnerAsync(Guid ownerId)
+    public async Task<Bar> GetForOwnerAsync(Guid ownerId)
     {
-        lock (_verrou)
-        {
-            return Task.FromResult(_bars.TryGetValue(ownerId, out Bar? bar)
-                ? bar.Snapshot()
-                : new Bar(ownerId));
-        }
+        BarDonnees? donnees = await db.Bars
+            .AsNoTracking()
+            .Include(bar => bar.Lignes).ThenInclude(ligne => ligne.Ingredient).ThenInclude(ingredient => ingredient!.Alias)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(bar => bar.ProprietaireId == ownerId);
+
+        return donnees?.VersDomaine() ?? new Bar(ownerId);
     }
 
     /// <summary>
-    /// Publie le bar, à condition qu'il ait été lu dans la version actuellement stockée.
-    /// Sinon une autre requête a écrit entre-temps : on refuse plutôt que d'écraser
-    /// silencieusement sa modification.
+    /// Publie le bar, à condition qu'il ait été lu dans la version actuellement stockée. Sinon
+    /// une autre requête a écrit entre-temps : on refuse plutôt que d'écraser sa modification.
     /// </summary>
+    /// <remarks>
+    /// Le passage à la version suivante est conditionné par la version lue, dans la même
+    /// transaction que la réécriture des lignes : deux sauvegardes concurrentes ne peuvent
+    /// pas réussir toutes les deux.
+    /// </remarks>
     /// <exception cref="ConflitDeConcurrenceException">La version lue est périmée.</exception>
-    public Task SaveAsync(Bar bar)
+    public async Task SaveAsync(Bar bar)
     {
         ArgumentNullException.ThrowIfNull(bar);
 
-        lock (_verrou)
+        await using var transaction = await db.Database.BeginTransactionAsync();
+
+        try
         {
-            // Un bar jamais enregistré est en version 0 : deux premières sauvegardes
-            // concurrentes se départagent comme les suivantes.
-            int versionStockee = _bars.TryGetValue(bar.OwnerId, out Bar? actuel) ? actuel.Version : 0;
+            if (bar.Version == 0)
+            {
+                // Premier enregistrement : la clé primaire (le propriétaire) départage deux créations simultanées.
+                db.Bars.Add(new BarDonnees
+                {
+                    ProprietaireId = bar.OwnerId,
+                    Id = bar.Id,
+                    CreeLe = bar.CreatedAt,
+                    Version = 1,
+                    Lignes = bar.LignesVersDonnees()
+                });
+            }
+            else
+            {
+                int publiees = await db.Bars
+                    .Where(stocke => stocke.ProprietaireId == bar.OwnerId && stocke.Version == bar.Version)
+                    .ExecuteUpdateAsync(colonnes => colonnes.SetProperty(stocke => stocke.Version, stocke => stocke.Version + 1));
 
-            if (bar.Version != versionStockee)
-                throw new ConflitDeConcurrenceException(
-                    "Le bar a été modifié entre-temps. Recharge-le puis recommence.");
+                if (publiees == 0)
+                    throw Conflit();
 
-            Bar publie = bar.Snapshot();
-            publie.Version = versionStockee + 1;
-            _bars[bar.OwnerId] = publie;        }
+                await db.LignesStock.Where(ligne => ligne.ProprietaireId == bar.OwnerId).ExecuteDeleteAsync();
+                db.LignesStock.AddRange(bar.LignesVersDonnees());
+            }
 
-        return Task.CompletedTask;
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (DbUpdateException erreur) when (MixoLoggerDbContext.EstViolationUnicite(erreur))
+        {
+            throw Conflit(erreur);
+        }
+        finally
+        {
+            db.ChangeTracker.Clear();
+        }
     }
+
+    private static ConflitDeConcurrenceException Conflit(Exception? cause = null) =>
+        new("Le bar a été modifié entre-temps. Recharge-le puis recommence.", cause);
 }

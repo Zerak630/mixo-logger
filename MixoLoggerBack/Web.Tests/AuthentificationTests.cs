@@ -21,10 +21,11 @@ public class AuthentificationTests : IClassFixture<AuthentificationTests.ApiDeTe
     private const string Identifiant = "alice";
     private const string MotDePasse = "mot-de-passe-de-test-uniquement";
 
-    public class ApiDeTest : WebApplicationFactory<Program>
+    public class ApiDeTest : ApiAvecBaseTemporaire
     {
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {
+            base.ConfigureWebHost(builder);
             builder.UseSetting("Comptes:0:Identifiant", Identifiant);
             builder.UseSetting("Comptes:0:NomAffiche", "Alice");
             builder.UseSetting("Comptes:0:MotDePasse", MotDePasse);
@@ -193,7 +194,8 @@ public class LimitationDesConnexionsTests
     [Fact]
     public async Task AuDelaDeLaLimite_LaConnexionEstRefuseeEn429()
     {
-        using var api = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        using var baseTemporaire = new ApiAvecBaseTemporaire();
+        using var api = baseTemporaire.WithWebHostBuilder(builder =>
         {
             builder.UseSetting("Comptes:0:Identifiant", "alice");
             builder.UseSetting("Comptes:0:MotDePasse", "mot-de-passe-de-test-uniquement");
@@ -219,7 +221,8 @@ public class ConfigurationDesComptesTests
     [InlineData("", "mot-de-passe-assez-long", "identifiant est obligatoire")]
     public void CompteInvalide_EmpecheLeDemarrage(string identifiant, string motDePasse, string messageAttendu)
     {
-        using var api = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        using var baseTemporaire = new ApiAvecBaseTemporaire();
+        using var api = baseTemporaire.WithWebHostBuilder(builder =>
         {
             builder.UseSetting("Comptes:0:Identifiant", identifiant);
             builder.UseSetting("Comptes:0:MotDePasse", motDePasse);
@@ -233,7 +236,8 @@ public class ConfigurationDesComptesTests
     [Fact]
     public void IdentifiantEnDouble_EmpecheLeDemarrage()
     {
-        using var api = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        using var baseTemporaire = new ApiAvecBaseTemporaire();
+        using var api = baseTemporaire.WithWebHostBuilder(builder =>
         {
             builder.UseSetting("Comptes:0:Identifiant", "alice");
             builder.UseSetting("Comptes:0:MotDePasse", "mot-de-passe-assez-long");

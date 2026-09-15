@@ -8,4 +8,5 @@ namespace Domain.Interfaces.Repositories;
 /// Hérite d'<see cref="InvalidOperationException"/> pour être traduite en 409 comme les
 /// autres opérations impossibles. Le client relit l'état et rejoue sa modification.
 /// </remarks>
-public class ConflitDeConcurrenceException(string message) : InvalidOperationException(message);
+public class ConflitDeConcurrenceException(string message, Exception? innerException = null)
+    : InvalidOperationException(message, innerException);

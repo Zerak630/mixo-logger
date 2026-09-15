@@ -1,4 +1,5 @@
 using Domain.Cocktails;
+using Infrastructure.Persistance;
 using Web;
 using Web.Securite;
 
@@ -33,9 +34,13 @@ builder.Services.AddSwaggerGen(builder =>
 // Configuration structure application
 Application.DependencyInjection.AddApplication(builder.Services);
 
+// Base SQLite (F10) : ConnectionStrings:MixoLogger, chemin relatif au dossier de l'API.
+builder.Services.AddPersistance(builder.Configuration, builder.Environment.ContentRootPath);
+
 var app = builder.Build();
 
 app.VerifierComptes();
+await app.Services.MettreAJourBaseAsync();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

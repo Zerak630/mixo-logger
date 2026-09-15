@@ -41,6 +41,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# --- Base de données SQLite (F10) : données réelles, jamais versionnées ---
+MixoLoggerBack/Web/Donnees/
+*.db
+*.db-shm
+*.db-wal
+
 # --- Environment files ---
 .env
 .env.*

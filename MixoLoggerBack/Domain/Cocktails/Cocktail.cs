@@ -67,6 +67,13 @@ public class Cocktail : IAggregate
 	}
 
 	/// <summary>
+	/// Recette relue depuis le stockage, avec son identifiant d'origine. Le contenu est validé
+	/// comme à la création : une donnée corrompue en base ne produit pas de recette invalide.
+	/// </summary>
+	public static Cocktail Reconstituer(Guid id, string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description, Guid? authorId) =>
+		new(id, name, ingredients, etapes, description, authorId);
+
+	/// <summary>
 	/// La même recette (même <see cref="Id"/>, même auteur) avec un nouveau contenu, validé comme à la création.
 	/// </summary>
 	public Cocktail Modifier(string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description = null) =>

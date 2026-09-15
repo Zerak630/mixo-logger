@@ -1,36 +1,70 @@
-using System.Collections.Concurrent;
 using Domain.Interfaces.Repositories;
 using Domain.Notes;
+using Infrastructure.Persistance;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repositories;
 
-/// <summary>Notes en mémoire, une par couple cocktail / utilisateur.</summary>
-public class NoteRepository : INoteRepository
+/// <summary>Notes des cocktails, une par couple cocktail / utilisateur (clé primaire).</summary>
+public class NoteRepository(MixoLoggerDbContext db) : INoteRepository
 {
-    private static readonly ConcurrentDictionary<(Guid CocktailId, Guid UtilisateurId), Note> _notes = new();
-
-    public Task DefinirAsync(Note note)
+    /// <exception cref="KeyNotFoundException">Le cocktail a été supprimé entre-temps.</exception>
+    public async Task DefinirAsync(Note note)
     {
         ArgumentNullException.ThrowIfNull(note);
 
-        _notes[(note.CocktailId, note.UtilisateurId)] = note;
-        return Task.CompletedTask;
+        try
+        {
+            if (!await RemplacerAsync(note))
+            {
+                db.Notes.Add(new NoteDonnees
+                {
+                    CocktailId = note.CocktailId,
+                    UtilisateurId = note.UtilisateurId,
+                    Valeur = note.Valeur,
+                    NoteeLe = note.NoteeLe
+                });
+                await db.SaveChangesAsync();
+            }
+        }
+        catch (DbUpdateException erreur) when (MixoLoggerDbContext.EstViolationUnicite(erreur))
+        {
+            // Deux premières notes simultanées du même utilisateur : la seconde remplace la première.
+            db.ChangeTracker.Clear();
+            await RemplacerAsync(note);
+        }
+        catch (DbUpdateException erreur) when (MixoLoggerDbContext.EstViolationCleEtrangere(erreur))
+        {
+            throw new KeyNotFoundException($"Cocktail with ID {note.CocktailId} not found.", erreur);
+        }
+        finally
+        {
+            db.ChangeTracker.Clear();
+        }
     }
 
-    public Task<bool> RetirerAsync(Guid cocktailId, Guid utilisateurId) =>
-        Task.FromResult(_notes.TryRemove((cocktailId, utilisateurId), out _));
+    public async Task<bool> RetirerAsync(Guid cocktailId, Guid utilisateurId) =>
+        await db.Notes
+            .Where(note => note.CocktailId == cocktailId && note.UtilisateurId == utilisateurId)
+            .ExecuteDeleteAsync() > 0;
 
-    public Task<IReadOnlyList<Note>> GetByCocktailAsync(Guid cocktailId) =>
-        Task.FromResult<IReadOnlyList<Note>>([.. _notes.Values.Where(note => note.CocktailId == cocktailId)]);
+    public async Task<IReadOnlyList<Note>> GetByCocktailAsync(Guid cocktailId) =>
+        [.. (await db.Notes.AsNoTracking().Where(note => note.CocktailId == cocktailId).ToListAsync())
+            .Select(note => note.VersDomaine())];
 
-    public Task<ILookup<Guid, Note>> GetAllByCocktailAsync() =>
-        Task.FromResult(_notes.Values.ToLookup(note => note.CocktailId));
+    public async Task<ILookup<Guid, Note>> GetAllByCocktailAsync() =>
+        (await db.Notes.AsNoTracking().ToListAsync())
+            .Select(note => note.VersDomaine())
+            .ToLookup(note => note.CocktailId);
 
-    public Task RetirerPourCocktailAsync(Guid cocktailId)
-    {
-        foreach ((Guid, Guid) cle in _notes.Keys.Where(cle => cle.CocktailId == cocktailId))
-            _notes.TryRemove(cle, out _);
+    /// <summary>La base supprime déjà les notes avec leur recette (cascade) ; conservé pour les appelants.</summary>
+    public async Task RetirerPourCocktailAsync(Guid cocktailId) =>
+        await db.Notes.Where(note => note.CocktailId == cocktailId).ExecuteDeleteAsync();
 
-        return Task.CompletedTask;
-    }
+    private async Task<bool> RemplacerAsync(Note note) =>
+        await db.Notes
+            .Where(existante => existante.CocktailId == note.CocktailId && existante.UtilisateurId == note.UtilisateurId)
+            .ExecuteUpdateAsync(colonnes => colonnes
+                .SetProperty(existante => existante.Valeur, note.Valeur)
+                .SetProperty(existante => existante.NoteeLe, note.NoteeLe)) > 0;
 }

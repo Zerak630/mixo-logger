@@ -14,7 +14,7 @@ public record Volume : IValueObject
 	public Volume(double value, UniteVolume unit)
 	{
 		if (value < 0)
-			throw new ArgumentOutOfRangeException(nameof(value), "Volume must be non-negative.");
+			throw new ArgumentOutOfRangeException(nameof(value), "Un volume ne peut pas être négatif.");
 
 		Value = value;
 		Unit = unit ?? throw new ArgumentNullException(nameof(unit), "Unit cannot be null.");
@@ -112,7 +112,8 @@ public record UniteVolume : IValueObject
 			cL => Centilitre,
 			dL => Decilitre,
 			L => Litre,
-			_ => throw new ArgumentException($"Unknown unit: {name}", nameof(name))
+			// Message affiché tel quel dans l'interface (400) : en français.
+			_ => throw new ArgumentException($"Unité de volume inconnue : « {name} ». Unités acceptées : {mL}, {cL}, {dL}, {L}.", nameof(name))
 		};
 	}
 }

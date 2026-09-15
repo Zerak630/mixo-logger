@@ -76,7 +76,9 @@ public class CocktailRepository(MixoLoggerDbContext db) : ICocktailRepository
 
 			await transaction.CommitAsync();
 		}
-		catch (DbUpdateException erreur) when (MixoLoggerDbContext.EstViolationUnicite(erreur))
+		// Exception et non DbUpdateException : le changement de nom passe par ExecuteUpdate, qui
+		// laisse remonter l'erreur SQLite brute (sans cela, un nom déjà pris donnait une 500).
+		catch (Exception erreur) when (MixoLoggerDbContext.EstViolationUnicite(erreur))
 		{
 			throw NomDejaPris(cocktail, erreur);
 		}

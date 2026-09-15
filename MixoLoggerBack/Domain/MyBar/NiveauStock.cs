@@ -37,7 +37,8 @@ public record NiveauStock : IValueObject
 			pleine => Pleine,
 			entamee => Entamee,
 			presqueFinie => PresqueFinie,
-			_ => throw new ArgumentException($"Unknown niveau: {name}", nameof(name))
+			// Message affiché tel quel dans l'interface (400) : en français.
+			_ => throw new ArgumentException($"Niveau inconnu : « {name} ». Niveaux acceptés : {pleine}, {entamee}, {presqueFinie}.", nameof(name))
 		};
 	}
 }

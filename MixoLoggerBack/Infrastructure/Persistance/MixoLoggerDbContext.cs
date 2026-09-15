@@ -93,12 +93,20 @@ public class MixoLoggerDbContext(DbContextOptions<MixoLoggerDbContext> options) 
     }
 
     /// <summary>Vrai si l'écriture a échoué sur une contrainte d'unicité ou de clé primaire.</summary>
-    public static bool EstViolationUnicite(DbUpdateException erreur) =>
-        erreur.InnerException is SqliteException { SqliteExtendedErrorCode: SQLITE_CONSTRAINT_UNIQUE or SQLITE_CONSTRAINT_PRIMARYKEY };
+    /// <remarks>
+    /// <c>SaveChanges</c> enveloppe l'erreur SQLite dans une <see cref="DbUpdateException"/>, mais
+    /// <c>ExecuteUpdate</c> / <c>ExecuteDelete</c> la laissent passer telle quelle : les deux formes
+    /// sont reconnues.
+    /// </remarks>
+    public static bool EstViolationUnicite(Exception erreur) =>
+        ErreurSqlite(erreur) is { SqliteExtendedErrorCode: SQLITE_CONSTRAINT_UNIQUE or SQLITE_CONSTRAINT_PRIMARYKEY };
 
     /// <summary>Vrai si l'écriture référence une ligne qui n'existe plus (recette supprimée entre-temps…).</summary>
-    public static bool EstViolationCleEtrangere(DbUpdateException erreur) =>
-        erreur.InnerException is SqliteException { SqliteExtendedErrorCode: SQLITE_CONSTRAINT_FOREIGNKEY };
+    public static bool EstViolationCleEtrangere(Exception erreur) =>
+        ErreurSqlite(erreur) is { SqliteExtendedErrorCode: SQLITE_CONSTRAINT_FOREIGNKEY };
+
+    private static SqliteException? ErreurSqlite(Exception erreur) =>
+        erreur as SqliteException ?? (erreur as DbUpdateException)?.InnerException as SqliteException;
 
     private const int SQLITE_CONSTRAINT_FOREIGNKEY = 787;
     private const int SQLITE_CONSTRAINT_PRIMARYKEY = 1555;

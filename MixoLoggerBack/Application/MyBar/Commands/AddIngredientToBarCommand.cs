@@ -32,17 +32,24 @@ public class AddIngredientToBarCommandHandler(
         if (string.IsNullOrWhiteSpace(request.Name))
             throw new ArgumentException("Le nom de l'ingrédient est obligatoire.", nameof(request));
 
+        // Niveau et volume validés AVANT de toucher au référentiel : une saisie refusée ne doit pas y
+        // laisser un ingrédient, que l'autocomplétion proposerait ensuite à tout le monde.
+        Volume? volume = request.Quantity is null
+            ? null
+            : new Volume(request.Quantity.Value, UniteVolume.FromString(request.Quantity.Unit));
+        NiveauStock niveau = NiveauStock.FromString(request.Niveau ?? NiveauStock.pleine);
+
         Bar bar = await barRepository.GetForOwnerAsync(utilisateurCourant.Id);
 
         Ingredient ingredient = await ingredientRepository.GetOrCreateAsync(request.Name);
 
-        if (request.Quantity is not null)
+        if (volume is not null)
         {
-            bar.AddIngredient(ingredient, new Volume(request.Quantity.Value, UniteVolume.FromString(request.Quantity.Unit)));
+            bar.AddIngredient(ingredient, volume);
         }
         else
         {
-            bar.AddIngredient(ingredient, NiveauStock.FromString(request.Niveau ?? NiveauStock.pleine));
+            bar.AddIngredient(ingredient, niveau);
         }
 
         await barRepository.SaveAsync(bar);

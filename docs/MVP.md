@@ -106,9 +106,22 @@ MixoLoggerBack/
 ├── Infrastructure/  # Persistance SQLite (EF Core), repositories, hachage des mots de passe
 │   └── Persistance/ # DbContext, modèles de stockage, traduction vers le domaine, migrations, jeu initial
 ├── Web/             # Controllers, Program.cs, Swagger, sécurité (cookie, CORS, limitation)
-├── Domain.Tests/    # Tests unitaires du domaine
-└── Web.Tests/       # Tests d'intégration : API complète, base SQLite temporaire par fixture
+├── Domain.Tests/         # Tests unitaires du domaine
+├── Infrastructure.Tests/ # Dépôts, schéma et migrations sur une vraie base SQLite ; hachage, comptes
+└── Web.Tests/            # Tests d'intégration : API complète, base SQLite temporaire par fixture
 ```
+
+**Tests back** — `dotnet test` depuis `MixoLoggerBack` (366 tests au 15/09/2026, une vingtaine de secondes) :
+
+| Projet | Porte sur | Notamment |
+|--------|-----------|-----------|
+| `Domain.Tests` | Règles métier pures | Faisabilité et préparation (`Bar`, `LigneStock`), doses et volumes, recettes, auteur, notes, `Utilisateur` (identifiant stable figé en dur) |
+| `Infrastructure.Tests` | Base réelle, montée comme l'API (`AddPersistance` + migrations) | **Modèle sans migration oubliée**, clés étrangères actives, WAL, jeu initial unique ; dépôts : alias, unicité, transactions, cascade, concurrence ; hachage et validation des comptes |
+| `Web.Tests` | L'API de bout en bout (cookie, autorisations, erreurs HTTP) | Mon bar et recettes (400 / 403 / 404 / 409 et messages affichés), propriétaires, notes, persistance au redémarrage, cookie falsifié, identité glissée dans le corps ignorée, session d'un compte retiré rejetée |
+
+Pas de fournisseur « en mémoire » d'EF Core : il n'applique ni contraintes, ni transactions, ni
+cascades, précisément ce que ces tests doivent vérifier. Les tests clés ont été vérifiés par mutation
+(code volontairement cassé, test en échec, puis code rétabli).
 
 Règle de dépendance : `Web → Application → Domain`, `Infrastructure → Domain`. Depuis F10,
 `Application` ne référence plus `Infrastructure` : les dépôts sont enregistrés par
@@ -483,11 +496,16 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
   `CocktailDetailDto` (F5 ; le champ `etapeRecettes` est devenu `etapes` côté front). Seul
   `POST /api/cocktails` renvoie un `ActionResult<T>` (pour le `201 Created`) ; les autres actions
   renvoient le DTO nu, les erreurs passant par le gestionnaire d'exceptions.
-- **B6 — Couverture de test partielle.** ✅ Résolu côté back : `Domain.Tests` existe et couvre `Bar`,
-  `Cocktail`, `EtapeRecette`, `Volume` et `VolumeConverter` en xUnit. Depuis F6, `Web.Tests` fait tourner
-  l'API complète en mémoire (`WebApplicationFactory`) et couvre l'authentification de bout en bout.
-  Restent peu ou pas testés : les handlers `Application` hors authentification, et **tout le front**
-  (Karma/Jasmine installé, aucun test réel).
+- **B6 — Couverture de test partielle.** ✅ Résolu côté back (15/09/2026) : domaine, infrastructure
+  sur base réelle et API de bout en bout, 366 tests (cf. §2.3). Les handlers `Application` sont couverts
+  à travers l'API plutôt qu'isolément. Reste **tout le front** (Karma/Jasmine installé, aucun test réel).
+  Défauts trouvés en écrivant ces tests, corrigés :
+  - renommer une recette vers un nom déjà pris renvoyait une **500** si la vérification préalable était
+    contournée (requêtes simultanées) : l'erreur SQLite brute de `ExecuteUpdate` n'était pas interceptée ;
+  - un ajout au bar refusé (unité ou niveau invalide) **créait quand même l'ingrédient** dans le
+    référentiel, visible ensuite dans l'autocomplétion de tous : la validation passe désormais avant ;
+  - trois messages d'erreur du domaine étaient **en anglais** (unité, niveau, volume négatif) alors
+    qu'ils s'affichent tels quels dans l'interface.
 - **B7 — Authentification factice.** ✅ **Corrigé (F6)** : l'identifiant et le mot de passe en dur du
   bundle front ont disparu avec la modale ; la vérification se fait côté API, mots de passe hachés.
 - **B8 — Les projets bibliothèque utilisent `Microsoft.NET.Sdk.Web`.** `Domain`, `Application` et

@@ -7,6 +7,7 @@ import { Button, ButtonDirective } from '@openng/optimus-ui/button';
 import { ConfirmPopup } from '@openng/optimus-ui/confirmpopup';
 import { Rating } from '@openng/optimus-ui/rating';
 import { Observable } from 'rxjs';
+import { PartageService } from '../../../core/partage.service';
 import { CocktailDetail, DoseIngredient, Notes } from '../../../models/cocktail';
 import { libelleDose } from '../../../utils/libelle-dose';
 import { formaterMoyenne } from '../../../utils/libelle-notes';
@@ -47,6 +48,7 @@ export default class CocktailDetailComponent {
   private readonly confirmationService = inject(ConfirmationService);
   private readonly messageService = inject(MessageService);
   private readonly router = inject(Router);
+  private readonly partageService = inject(PartageService);
 
   async augmenterNbVerres() {
     this.nbVerres.update(value => value + 1);
@@ -56,17 +58,38 @@ export default class CocktailDetailComponent {
     this.nbVerres.update(value => value > 1 ? value - 1 : value);
   }
 
+  readonly preparationEnCours = signal(false);
+
   async makeThisCocktail() {
+    const cocktail = this.cocktail();
+    const verres = this.nbVerres();
+
+    this.preparationEnCours.set(true);
     try {
-      // Le nombre de verres est désormais transmis : l'API décompte la commande
-      // entière, ou n'en décompte aucune part si le stock ne suffit pas.
-      await this.cocktailService.makeCocktail(this.cocktail().id, this.nbVerres());
-      alert('Cocktail en cours de préparation !');
+      // Tout ou rien : l'API décompte la commande entière, ou rien si le stock ne suffit pas.
+      await this.cocktailService.makeCocktail(cocktail.id, verres);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Santé !',
+        detail: `${verres > 1 ? `${verres} verres` : 'Un verre'} de « ${cocktail.name} » préparé${verres > 1 ? 's' : ''}, ton bar est à jour.`,
+        life: 4000
+      });
     } catch (erreur) {
-      alert(erreur instanceof HttpErrorResponse && erreur.error?.detail
-        ? erreur.error.detail
-        : 'Erreur lors de la préparation du cocktail.');
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Préparation impossible',
+        detail: erreur instanceof HttpErrorResponse && erreur.error?.detail
+          ? erreur.error.detail
+          : 'La préparation a échoué. Réessaie dans un instant.',
+        life: 6000
+      });
+    } finally {
+      this.preparationEnCours.set(false);
     }
+  }
+
+  partager(): void {
+    this.partageService.partagerCocktail(this.cocktail());
   }
 
   /** Donne ou change sa note. Une valeur vide (étoile désélectionnée) retire la note. */

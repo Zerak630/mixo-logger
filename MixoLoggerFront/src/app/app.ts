@@ -1,6 +1,6 @@
 import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
-import { MenuItem, MessageService } from '@openng/optimus-ui/api';
+import { MenuItem } from '@openng/optimus-ui/api';
 import { Avatar } from '@openng/optimus-ui/avatar';
 import { Button } from '@openng/optimus-ui/button';
 import { DialogService } from '@openng/optimus-ui/dynamicdialog';
@@ -19,8 +19,7 @@ import UserService from './core/user.service';
 		ToastModule
 	],
 	providers: [
-		DialogService,
-		MessageService
+		DialogService
 	],
 	templateUrl: './app.html',
 	changeDetection: ChangeDetectionStrategy.Eager,
@@ -29,24 +28,21 @@ import UserService from './core/user.service';
 export class App {
 	protected readonly title = signal('MixoLoggerFront');
 
+	/** Seulement des écrans qui existent : « À propos » et « Contact » pointaient vers des routes absentes. */
 	protected readonly menuItems: MenuItem[] = [
 		{
 			label: "Cocktails",
+			icon: "pi pi-list",
 			routerLink: "/cocktails"
 		},
 		{
-			label: "My bar",
+			label: "Mon bar",
+			icon: "pi pi-box",
 			routerLink: "/my_bar"
 		},
-		{
-			label: "About",
-			routerLink: "/about"
-		},
-		{
-			label: "Contact",
-			routerLink: "/contact"
-		},
 	];
+
+	protected readonly annee = new Date().getFullYear();
 
 	protected readonly userService = inject(UserService);
 	private readonly authService = inject(AuthService);

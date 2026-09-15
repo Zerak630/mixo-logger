@@ -1,8 +1,10 @@
-import { Component, computed, inject, input, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, computed, inject, input, ChangeDetectionStrategy, linkedSignal, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { ConfirmationService } from '@openng/optimus-ui/api';
 import { ButtonDirective } from '@openng/optimus-ui/button';
+import { ConfirmPopup } from '@openng/optimus-ui/confirmpopup';
 import { IconField } from '@openng/optimus-ui/iconfield';
 import { InputIcon } from '@openng/optimus-ui/inputicon';
 import { InputText } from '@openng/optimus-ui/inputtext';
@@ -13,19 +15,24 @@ import { IngredientReference } from '../../../models/bar';
 import { CocktailResume } from '../../../models/cocktail';
 import { filtrerCocktails } from '../../../utils/recherche-cocktails';
 import { MyBarService } from '../../mybar/mybar.service';
+import { CocktailsService } from '../cocktails.service';
 
 @Component({
   selector: 'cocktail-list',
   templateUrl: './cocktail-list.component.html',
   styleUrls: ['./cocktail-list.component.scss'],
-  changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [CocktailCardComponent, FormsModule, IconField, InputIcon, InputText, Select, ToggleSwitch, RouterLink, ButtonDirective]
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CocktailCardComponent, ConfirmPopup, FormsModule, IconField, InputIcon, InputText, Select, ToggleSwitch, RouterLink, ButtonDirective],
+  // Confirmation de « Réaliser » sur les cartes : un seul service et un seul p-confirmpopup pour la liste.
+  providers: [ConfirmationService]
 })
 export default class CocktailListComponent {
   /** Déjà triés par l'API : réalisables d'abord, puis par nombre d'ingrédients manquants. */
   readonly cocktails = input.required<CocktailResume[]>();
 
   /** Pour retrouver une recette par un alias d'ingrédient (« white rum »). Sans lui, la recherche reste utilisable. */
+  private readonly cocktailsService = inject(CocktailsService);
+
   private readonly referentiel = toSignal(inject(MyBarService).getIngredients(), { initialValue: [] as IngredientReference[] });
 
   /** F8 — nom, description ou ingrédient. */
@@ -45,10 +52,13 @@ export default class CocktailListComponent {
     { label: '4,5 étoiles et plus', value: 4.5 }
   ];
 
-  readonly nombreRealisables = computed(() => this.cocktails().filter(cocktail => cocktail.realisable).length);
+  /** Part de la liste résolue par la route, puis suit les rechargements (un verre préparé change le stock). */
+  readonly liste = linkedSignal(() => this.cocktails());
+
+  readonly nombreRealisables = computed(() => this.liste().filter(cocktail => cocktail.realisable).length);
 
   readonly cocktailsAffiches = computed(() => filtrerCocktails(
-    this.cocktails(),
+    this.liste(),
     {
       texte: this.texte(),
       seulementRealisables: this.seulementRealisables(),
@@ -67,17 +77,8 @@ export default class CocktailListComponent {
     this.noteMinimale.set(null);
   }
 
-  handleKeyPress($event: KeyboardEvent, card: CocktailCardComponent, link: HTMLAnchorElement) {
-    switch ($event.code) {
-      case 'Space':
-        card.isFocused.toggle();
-        $event.preventDefault();
-        break;
-      case 'Enter':
-        link.click();
-        break;
-      default:
-        break;
-    }
+  /** Faisabilité et stock recalculés par l'API après une préparation depuis une carte. */
+  recharger(): void {
+    this.cocktailsService.getCocktails().subscribe(cocktails => this.liste.set(cocktails));
   }
 }

@@ -1,21 +1,14 @@
-/* Styles pour la liste des cocktails */
-ul {
+.cartes {
   list-style: none;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-evenly;
-}
-li {
-  width: fit-content;
-  padding: 8px;
-  cursor: pointer;
-}
 
-// Le lien enveloppe toute la carte : il ne doit pas en recolorer le contenu.
-li > a {
-  text-decoration: none;
-  color: inherit;
+  > li {
+    width: fit-content;
+    padding: 8px;
+  }
 }
 
 .entete {

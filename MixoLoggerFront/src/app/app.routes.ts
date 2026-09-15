@@ -32,4 +32,9 @@ export const routes: Routes = [
 			},
 		]
 	},
+	{
+		// Adresse inconnue (ancien lien, faute de frappe) : retour à l'accueil plutôt qu'un écran vide.
+		path: '**',
+		redirectTo: ''
+	},
 ];

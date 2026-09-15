@@ -2,6 +2,7 @@ import { ApplicationConfig, inject, provideAppInitializer, provideBrowserGlobalE
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 
 import { provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
+import { MessageService } from '@openng/optimus-ui/api';
 import { provideOptimus } from '@openng/optimus-ui/config';
 import { routes } from './app.routes';
 import AuthService from './core/auth.service';
@@ -14,6 +15,9 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withXhr(), withInterceptors([httpInterceptor])),
+    // Notifications (<p-toast> dans app.html) : au niveau racine, pour que les services
+    // (PartageService…) puissent aussi en émettre, pas seulement les composants.
+    MessageService,
     // Avant la première navigation : sait-on déjà qui est connecté (cookie encore valide) ?
     // Sans cela, le garde de session renverrait vers la connexion à chaque rechargement.
     provideAppInitializer(() => inject(AuthService).restaurerSession()),

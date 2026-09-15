@@ -12,9 +12,16 @@
       </p>
       <h2 id="detail-nom" class="detail__nom">{{ cocktail().name }}</h2>
     </div>
-    <!-- Seul l'auteur modifie ou supprime : l'API le refuse aux autres, inutile de leur proposer. -->
-    @if (cocktail().modifiable) {
-      <div class="detail__actions">
+    <div class="detail__actions">
+      <p-button
+        icon="pi pi-share-alt"
+        severity="secondary"
+        [text]="true"
+        [rounded]="true"
+        ariaLabel="Partager cette recette"
+        (onClick)="partager()" />
+      <!-- Seul l'auteur modifie ou supprime : l'API le refuse aux autres, inutile de leur proposer. -->
+      @if (cocktail().modifiable) {
         <a pButton routerLink="edit" label="Modifier" icon="pi pi-pencil" severity="secondary" [outlined]="true" class="detail__modifier"></a>
         <p-button
           label="Supprimer"
@@ -23,8 +30,8 @@
           [text]="true"
           [loading]="suppressionEnCours()"
           (onClick)="supprimer($event)" />
-      </div>
-    }
+      }
+    </div>
   </div>
 
   @if (cocktail().description) {
@@ -106,7 +113,7 @@
     }
   </section>
 
-  <p-button label="Faire ce cocktail" icon="pi pi-check" (onClick)="makeThisCocktail()" />
+  <p-button label="Faire ce cocktail" icon="pi pi-check" [loading]="preparationEnCours()" (onClick)="makeThisCocktail()" />
 </article>
 
 <p-confirmpopup />

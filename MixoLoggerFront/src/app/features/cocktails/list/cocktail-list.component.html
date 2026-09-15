@@ -33,24 +33,22 @@
 
   <p class="entete__compte" aria-live="polite">
     @if (filtresActifs()) {
-      {{ cocktailsAffiches().length }} cocktail{{ cocktailsAffiches().length > 1 ? 's' : '' }} sur {{ cocktails().length }}
+      {{ cocktailsAffiches().length }} cocktail{{ cocktailsAffiches().length > 1 ? 's' : '' }} sur {{ liste().length }}
     } @else {
       @switch (nombreRealisables()) {
         @case (0) { Aucun cocktail réalisable avec ton bar }
-        @case (1) { 1 cocktail réalisable sur {{ cocktails().length }} }
-        @default { {{ nombreRealisables() }} cocktails réalisables sur {{ cocktails().length }} }
+        @case (1) { 1 cocktail réalisable sur {{ liste().length }} }
+        @default { {{ nombreRealisables() }} cocktails réalisables sur {{ liste().length }} }
       }
     }
   </p>
 </header>
 
 @if (cocktailsAffiches().length) {
-  <ul>
+  <ul class="cartes">
     @for (cocktail of cocktailsAffiches(); track cocktail.id) {
       <li>
-        <a #link [href]="'cocktails/' + cocktail.id" (keypress)="handleKeyPress($event, card, link)">
-          <cocktail-card #card [cocktail]="cocktail"></cocktail-card>
-        </a>
+        <cocktail-card [cocktail]="cocktail" (prepare)="recharger()" />
       </li>
     }
   </ul>
@@ -65,3 +63,5 @@
     <button type="button" class="vide__lien" (click)="reinitialiserFiltres()">Réinitialiser les filtres</button>
   </p>
 }
+
+<p-confirmpopup />

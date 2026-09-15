@@ -1,11 +1,12 @@
 :host {
+  // --teinte : posée par le composant à partir du nom de la recette (0 à 359).
   position: relative;
   width: 320px;
   height: 420px;
   border-radius: 24px;
   overflow: hidden;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.10);
-  background: var(--p-primary-800);
+  background: hsl(var(--teinte) 45% 12%);
   display: grid;
   grid-template-columns: 100%;
   grid-template-rows: 70% 30% 0;
@@ -16,106 +17,144 @@
 
   transition: all 0.3s;
 
-  &.--focused,
   &:hover,
-  &:focus,
   &:focus-within {
     box-shadow: 0 8px 32px rgba(49, 49, 49, 0.7);
     grid-template-rows: 70% 10% 20%;
 
-    .image {
+    .visuel {
       transform: scale(1.05);
       filter: brightness(0.75);
-      will-change: transform, filter;
     }
   }
 
-  .image {
-    grid-column: 1 / -1;
-    grid-row: 1 / -1;
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
-    object-fit: cover;
-    transition: transform 0.5s, filter 0.5s;
+  // Le lien couvre la carte : l'anneau de focus doit donc entourer la carte entière.
+  &:has(.title__lien:focus-visible) {
+    outline: 3px solid var(--mixo-texte);
+    outline-offset: 3px;
+  }
+}
+
+// Sans survol possible (écran tactile), les actions restent visibles en permanence.
+@media (hover: none) {
+  :host {
+    grid-template-rows: 70% 10% 20%;
+  }
+}
+
+.visuel {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: grid;
+  place-items: start center;
+  padding-top: 18%;
+  background:
+    radial-gradient(circle at 30% 20%, hsl(var(--teinte) 85% 62% / 0.55), transparent 55%),
+    linear-gradient(160deg, hsl(var(--teinte) 70% 40%), hsl(calc(var(--teinte) + 40) 60% 14%) 75%);
+  transition: transform 0.5s, filter 0.5s;
+  will-change: transform, filter;
+
+  &__verre {
+    width: 45%;
+    overflow: visible;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.35));
   }
 
-  // F4 — faisabilité avec le bar courant. Posé sur la photo : fond opaque obligatoire
-  // pour garantir le contraste, quelle que soit l'image.
-  .badge {
-    position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
-    z-index: 6;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    max-width: calc(100% - 1.5rem);
-    margin: 0;
-    padding: 0.25rem 0.625rem;
-    font-family: sans-serif;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    border-radius: 999px;
-
-    &--realisable {
-      color: var(--mixo-fond);
-      background: var(--mixo-succes);
-    }
-
-    &--manque,
-    &--note {
-      color: var(--mixo-texte);
-      background: rgba(10, 10, 10, 0.85);
-      border: 1px solid var(--mixo-bordure);
-    }
-
-    // En face du badge de faisabilité, pour ne jamais le recouvrir.
-    &--note {
-      left: auto;
-      right: 0.75rem;
-
-      .pi {
-        color: var(--mixo-accent);
-        font-size: 0.75rem;
-      }
-    }
+  &__liquide {
+    fill: hsl(calc(var(--teinte) + 180) 80% 70% / 0.85);
   }
 
-  .title {
-    font-family: sans-serif;
-    grid-area: title;
-    font-size: 1.5rem;
-    font-weight: bold;
-    padding-left: 1rem;
-    width: 100%;
-    margin: auto;
+  &__contour {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.9);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &__garniture {
+    fill: hsl(calc(var(--teinte) + 90) 75% 60%);
+  }
+}
+
+// F4 — faisabilité avec le bar courant. Posé sur le visuel : fond opaque obligatoire
+// pour garantir le contraste, quelle que soit la teinte.
+.badge {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: calc(100% - 1.5rem);
+  margin: 0;
+  padding: 0.25rem 0.625rem;
+  font-family: sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: 999px;
+
+  &--realisable {
+    color: var(--mixo-fond);
+    background: var(--mixo-succes);
+  }
+
+  &--manque,
+  &--note {
+    color: var(--mixo-texte);
+    background: rgba(10, 10, 10, 0.85);
+    border: 1px solid var(--mixo-bordure);
+  }
+
+  // En face du badge de faisabilité, pour ne jamais le recouvrir.
+  &--note {
+    left: auto;
+    right: 0.75rem;
+
+    .pi {
+      color: var(--mixo-accent);
+      font-size: 0.75rem;
+    }
+  }
+}
+
+.title {
+  font-family: sans-serif;
+  grid-area: title;
+  font-size: 1.5rem;
+  font-weight: bold;
+  padding: 0 1rem;
+  width: 100%;
+  margin: auto;
+  z-index: 5;
+  // Lisible sur toutes les teintes : le bas du visuel est toujours sombre, l'ombre fait le reste.
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+
+  &__lien {
     color: white;
-    z-index: 5;
-  }
+    text-decoration: none;
+    outline: none;
 
-  .footer {
-    grid-area: footer;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    overflow: hidden;
-    background: linear-gradient(to top, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0));
-    z-index: 4;
-  }
-
-  .button {
-    background: var(--p-primary-600);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background 0.3s;
-
-    &:hover {
-      background: var(--p-primary-500);
+    // Toute la carte est cliquable, sans imbriquer les boutons dans le lien.
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 5;
     }
   }
+}
+
+.footer {
+  grid-area: footer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 1rem;
+  overflow: hidden;
+  background: linear-gradient(to top, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0));
+  // Au-dessus du lien étendu : les boutons restent cliquables.
+  z-index: 7;
 }

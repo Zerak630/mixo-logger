@@ -26,6 +26,8 @@ public class ApiAvecBaseTemporaire : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ConnectionStrings:MixoLogger", $"Data Source={Fichier}");
+        // Les sauvegardes ont leurs propres tests : ailleurs, elles rempliraient le dossier temporaire.
+        builder.UseSetting("Sauvegarde:Active", "false");
     }
 
     public override async ValueTask DisposeAsync()

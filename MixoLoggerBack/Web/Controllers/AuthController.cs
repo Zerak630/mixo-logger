@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Application.Utilisateurs;
 using MediatR;
 using Microsoft.AspNetCore.Authentication;
@@ -12,42 +11,41 @@ namespace Web.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController(IMediator mediator) : ControllerBase
+public class AuthController(IMediator mediator, LimiteurEchecsParCompte limiteur) : ControllerBase
 {
     /// <summary>
     /// Ouvre une session : pose le cookie HttpOnly et renvoie l'utilisateur. 401 si
-    /// l'identifiant ou le mot de passe est faux (sans dire lequel), 429 après trop d'essais.
+    /// l'identifiant ou le mot de passe est faux (sans dire lequel), 429 après trop d'essais,
+    /// depuis la même adresse IP ou sur le même compte.
     /// </summary>
     [HttpPost("connexion")]
     [AllowAnonymous]
     [EnableRateLimiting(SecuriteExtensions.PolitiqueConnexion)]
     public async Task<ActionResult<UtilisateurDto>> Connexion([FromBody] ConnexionRequest demande, CancellationToken cancellationToken = default)
     {
-        UtilisateurDto? utilisateur = await mediator.Send(
-            new VerifierIdentifiantsQuery(demande.Identifiant ?? string.Empty, demande.MotDePasse ?? string.Empty),
+        string identifiant = demande.Identifiant ?? string.Empty;
+
+        // Avant toute vérification : un compte bloqué ne laisse plus rien tester, même le bon mot de passe.
+        if (limiteur.EstBloque(identifiant, out TimeSpan attente))
+            return this.TropDeTentatives(attente);
+
+        IdentiteVerifiee? identite = await mediator.Send(
+            new VerifierIdentifiantsQuery(identifiant, demande.MotDePasse ?? string.Empty),
             cancellationToken);
 
-        if (utilisateur is null)
+        if (identite is null)
+        {
+            limiteur.EnregistrerEchec(identifiant);
             return Problem(
                 statusCode: StatusCodes.Status401Unauthorized,
                 title: "Connexion refusée",
                 detail: "Identifiant ou mot de passe incorrect.");
+        }
 
-        ClaimsIdentity identite = new(
-            [
-                new Claim(ClaimTypes.NameIdentifier, utilisateur.Id.ToString()),
-                new Claim(ClaimTypes.Name, utilisateur.Identifiant),
-                new Claim(SecuriteExtensions.RevendicationNomAffiche, utilisateur.NomAffiche)
-            ],
-            CookieAuthenticationDefaults.AuthenticationScheme);
+        limiteur.Reinitialiser(identifiant);
+        await HttpContext.OuvrirSessionAsync(identite.Utilisateur, identite.TamponSecurite);
 
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identite),
-            // Session conservée à la fermeture du navigateur, jusqu'à 14 jours d'inactivité.
-            new AuthenticationProperties { IsPersistent = true });
-
-        return utilisateur;
+        return identite.Utilisateur;
     }
 
     /// <summary>Ferme la session. Accessible sans être connecté : une session expirée doit pouvoir se fermer proprement.</summary>
@@ -59,15 +57,24 @@ public class AuthController(IMediator mediator) : ControllerBase
         return NoContent();
     }
 
-    /// <summary>L'utilisateur de la session courante ; 401 sans session.</summary>
+    /// <summary>L'utilisateur de la session courante, lu en base (identifiant et nom à jour) ; 401 sans session.</summary>
     [HttpGet("moi")]
-    public ActionResult<UtilisateurDto> Moi()
-    {
-        return new UtilisateurDto(
-            Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!),
-            User.FindFirstValue(ClaimTypes.Name)!,
-            User.FindFirstValue(SecuriteExtensions.RevendicationNomAffiche)!);
-    }
+    public async Task<UtilisateurDto> Moi(CancellationToken cancellationToken = default) =>
+        await mediator.Send(new GetMonCompteQuery(), cancellationToken);
 }
 
 public record ConnexionRequest(string? Identifiant, string? MotDePasse);
+
+internal static class ReponsesSecurite
+{
+    public static ObjectResult TropDeTentatives(this ControllerBase controleur, TimeSpan attente)
+    {
+        int minutes = Math.Max(1, (int)Math.Ceiling(attente.TotalMinutes));
+        controleur.Response.Headers.RetryAfter = ((int)Math.Ceiling(attente.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        return controleur.Problem(
+            statusCode: StatusCodes.Status429TooManyRequests,
+            title: "Trop de tentatives",
+            detail: $"Trop de tentatives de connexion sur ce compte. Réessaie dans {minutes} minute{(minutes > 1 ? "s" : "")}.");
+    }
+}

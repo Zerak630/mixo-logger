@@ -7,8 +7,11 @@
 		<ng-template #end>
 			@if (userService.utilisateur(); as utilisateur) {
 				<div class="session">
-					<p-avatar [label]="userService.initiales()" shape="circle" aria-hidden="true" />
-					<span class="session__nom">{{ utilisateur.nomAffiche }}</span>
+					<a class="session__compte" routerLink="/compte" title="Mon compte">
+						<p-avatar [label]="userService.initiales()" shape="circle" aria-hidden="true" />
+						<span class="session__nom">{{ utilisateur.nomAffiche }}</span>
+						<span class="sr-only">(mon compte)</span>
+					</a>
 					<p-button
 						label="Se déconnecter"
 						icon="pi pi-sign-out"

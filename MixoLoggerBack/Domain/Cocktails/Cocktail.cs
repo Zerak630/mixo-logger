@@ -124,6 +124,19 @@ public class Cocktail : IAggregate
 	/// <summary>Vrai si cet utilisateur peut modifier ou supprimer la recette : il en est l'auteur.</summary>
 	public bool EstModifiablePar(Guid utilisateurId) => AuthorId is { } auteur && auteur == utilisateurId;
 
+	/// <summary>
+	/// Tout le monde note toutes les recettes, sauf la sienne : la note de l'auteur gonflerait la
+	/// moyenne sans rien dire de ce qu'en pensent les autres. Les recettes d'origine n'ont pas d'auteur.
+	/// </summary>
+	public bool EstNotablePar(Guid utilisateurId) => AuthorId != utilisateurId;
+
+	/// <exception cref="ActionNonAutoriseeException">L'utilisateur est l'auteur de la recette.</exception>
+	public void VerifierNotablePar(Guid utilisateurId)
+	{
+		if (!EstNotablePar(utilisateurId))
+			throw new ActionNonAutoriseeException($"« {Name} » est ta recette : tu ne peux pas la noter.");
+	}
+
 	/// <exception cref="ActionNonAutoriseeException">L'utilisateur n'est pas l'auteur de la recette.</exception>
 	public void VerifierModifiablePar(Guid utilisateurId)
 	{

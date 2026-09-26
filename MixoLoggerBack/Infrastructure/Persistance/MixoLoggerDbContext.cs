@@ -18,6 +18,7 @@ public class MixoLoggerDbContext(DbContextOptions<MixoLoggerDbContext> options) 
     public DbSet<BarDonnees> Bars => Set<BarDonnees>();
     public DbSet<LigneStockDonnees> LignesStock => Set<LigneStockDonnees>();
     public DbSet<NoteDonnees> Notes => Set<NoteDonnees>();
+    public DbSet<CompteDonnees> Comptes => Set<CompteDonnees>();
 
     protected override void OnModelCreating(ModelBuilder modele)
     {
@@ -91,6 +92,21 @@ public class MixoLoggerDbContext(DbContextOptions<MixoLoggerDbContext> options) 
             note.HasKey(n => new { n.CocktailId, n.UtilisateurId });
             // Supprimer une recette supprime ses notes, dans la même instruction : aucune note orpheline.
             note.HasOne<CocktailDonnees>().WithMany().HasForeignKey(n => n.CocktailId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Pas de clé étrangère depuis les recettes, bars et notes : un compte n'est jamais supprimé,
+        // seulement désactivé, et les recettes d'origine n'ont pas d'auteur.
+        modele.Entity<CompteDonnees>(compte =>
+        {
+            compte.ToTable("Comptes");
+            compte.HasKey(c => c.Id);
+            compte.Property(c => c.Identifiant).HasMaxLength(100);
+            compte.Property(c => c.IdentifiantNormalise).HasMaxLength(100);
+            compte.HasIndex(c => c.IdentifiantNormalise).IsUnique();
+            compte.Property(c => c.NomAffiche).HasMaxLength(100);
+            compte.Property(c => c.EmpreinteMotDePasse).HasMaxLength(500);
+            compte.Property(c => c.CleConfiguration).HasMaxLength(100);
+            compte.HasIndex(c => c.CleConfiguration).IsUnique();
         });
     }
 

@@ -6,19 +6,22 @@ using MediatR;
 namespace Application.Utilisateurs;
 
 /// <summary>
-/// Vérifie un couple identifiant / mot de passe. Renvoie l'utilisateur, ou <c>null</c> si
-/// l'un ou l'autre est faux — sans jamais dire lequel.
+/// Vérifie un couple identifiant / mot de passe. Renvoie l'utilisateur et son tampon de sécurité
+/// (à mettre dans la session), ou <c>null</c> si l'un ou l'autre est faux — sans jamais dire lequel.
 /// </summary>
 /// <remarks>
 /// L'ouverture de session elle-même (cookie) est une affaire du web, pas de l'application :
 /// elle reste dans le controller.
 /// </remarks>
-public record VerifierIdentifiantsQuery(string Identifiant, string MotDePasse) : IRequest<UtilisateurDto?>;
+public record VerifierIdentifiantsQuery(string Identifiant, string MotDePasse) : IRequest<IdentiteVerifiee?>;
+
+/// <param name="TamponSecurite">Change avec le mot de passe : une session qui porte l'ancien est rejetée.</param>
+public record IdentiteVerifiee(UtilisateurDto Utilisateur, Guid TamponSecurite);
 
 public class VerifierIdentifiantsQueryHandler(
     IUtilisateurRepository utilisateurRepository,
     IHacheurMotDePasse hacheur
-) : IRequestHandler<VerifierIdentifiantsQuery, UtilisateurDto?>
+) : IRequestHandler<VerifierIdentifiantsQuery, IdentiteVerifiee?>
 {
     /// <summary>
     /// Empreinte factice, calculée une fois : vérifiée quand l'identifiant est inconnu, pour
@@ -27,7 +30,7 @@ public class VerifierIdentifiantsQueryHandler(
     /// </summary>
     private static string? _empreinteFactice;
 
-    public async Task<UtilisateurDto?> Handle(VerifierIdentifiantsQuery request, CancellationToken cancellationToken)
+    public async Task<IdentiteVerifiee?> Handle(VerifierIdentifiantsQuery request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Identifiant) || string.IsNullOrEmpty(request.MotDePasse))
             return null;
@@ -42,7 +45,7 @@ public class VerifierIdentifiantsQueryHandler(
         }
 
         return hacheur.Verifier(utilisateur.EmpreinteMotDePasse, request.MotDePasse)
-            ? new UtilisateurDto(utilisateur)
+            ? new IdentiteVerifiee(new UtilisateurDto(utilisateur), utilisateur.TamponSecurite)
             : null;
     }
 }

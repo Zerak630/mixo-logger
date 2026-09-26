@@ -35,15 +35,15 @@
 | F3 | Gérer « Mon Bar » (stock d'ingrédients) | Must | ✅ Écran complet : ajout avec autocomplétion, niveau par ligne, retrait, volume exact optionnel |
 | F4 | Savoir quels cocktails sont réalisables avec le stock | Must | ✅ Badge sur chaque carte (réalisable / ce qui manque), filtre « Seulement ce que je peux faire », tri réalisables d'abord |
 | F5 | Ajouter / éditer une recette | Must | ✅ Création, édition (`/cocktails/new`, `/cocktails/:id/edit`) et suppression, doses en volume ou en décompte. Modification et suppression réservées à l'auteur (lot C2) |
-| F6 | Se connecter | Must | ✅ Connexion / déconnexion réelles, cookie de session HttpOnly, toute l'application protégée. Comptes en configuration hors dépôt (§10.2) |
+| F6 | Se connecter | Must | ✅ Connexion / déconnexion réelles, cookie de session HttpOnly, toute l'application protégée. Comptes en base, créés depuis la configuration hors dépôt (§10.2) ; page « Mon compte » : identifiant, nom affiché, mot de passe |
 | F7 | Noter un cocktail (⭐) | Should | ✅ Note de 1 à 5 par utilisateur (modifiable, retirable), moyenne et nombre de notes sur la carte et le détail |
 | F8 | Recherche / filtres | Should | ✅ Recherche par nom, description ou ingrédient (alias compris, sans accents ni casse, tous les mots requis) ; filtres « Seulement ce que je peux faire », « Mes recettes », note minimale |
 | F9 | Photo de cocktail | Could | ✅ Par adresse `https` d'une image hébergée ailleurs (pas d'envoi de fichiers, §6.1-5) : sur la carte, le détail et le formulaire, avec aperçu ; illustration générée en repli si l'image ne charge pas |
-| F10 | Persistance des données entre deux redémarrages | Later | ✅ SQLite + EF Core : recettes, référentiel d'ingrédients, bars et notes survivent au redémarrage. Migrations appliquées au démarrage, jeu initial inséré une seule fois (§10.2). Les comptes restent en configuration |
+| F10 | Persistance des données entre deux redémarrages | Later | ✅ SQLite + EF Core : recettes, référentiel d'ingrédients, bars et notes survivent au redémarrage. Migrations appliquées au démarrage, jeu initial inséré une seule fois (§10.2). Comptes en base aussi, sauvegardes automatiques |
 
 > Les données sont dans **un seul fichier** (`MixoLoggerBack/Web/Donnees/mixologger.db` par défaut,
-> hors dépôt). Le sauvegarder, c'est copier ce fichier **API arrêtée** — ou ses trois fichiers
-> `.db`, `.db-wal`, `.db-shm` ensemble. Aucune sauvegarde automatique n'est en place.
+> hors dépôt). Elle est **sauvegardée automatiquement** dans `Sauvegardes/`, à côté d'elle : une copie
+> par jour (les 7 dernières gardées), plus une avant chaque migration (§10.2).
 
 ---
 
@@ -88,7 +88,6 @@
 | Sujet | Quand | Pourquoi c'est reporté sans risque |
 |-------|-------|------------------------------------|
 | PostgreSQL | Si SQLite ne suffit plus (plusieurs instances, gros volume, écritures très concurrentes) | EF Core est en place : changer de fournisseur et régénérer les migrations, seul `Infrastructure` change |
-| Sauvegardes automatiques de la base | Avec le déploiement | En local, copier le fichier suffit |
 | Docker / `docker-compose` | Avec le déploiement | Le dev tourne très bien en `dotnet run` + `npm start` |
 | Déploiement sur le serveur centralisé | Après la GA de .NET 11 (novembre 2026) | Évite de déployer une préversion |
 | HTTPS, reverse proxy, nom de domaine | Idem | — |
@@ -111,13 +110,13 @@ MixoLoggerBack/
 └── Web.Tests/            # Tests d'intégration : API complète, base SQLite temporaire par fixture
 ```
 
-**Tests back** — `dotnet test` depuis `MixoLoggerBack` (389 tests au 26/09/2026, une vingtaine de secondes) :
+**Tests back** — `dotnet test` depuis `MixoLoggerBack` (430 tests au 26/09/2026, une trentaine de secondes) :
 
 | Projet | Porte sur | Notamment |
 |--------|-----------|-----------|
-| `Domain.Tests` | Règles métier pures | Faisabilité et préparation (`Bar`, `LigneStock`), doses et volumes, recettes, auteur, notes, `Utilisateur` (identifiant stable figé en dur) |
-| `Infrastructure.Tests` | Base réelle, montée comme l'API (`AddPersistance` + migrations) | **Modèle sans migration oubliée**, clés étrangères actives, WAL, jeu initial unique ; dépôts : alias, unicité, transactions, cascade, concurrence ; hachage et validation des comptes |
-| `Web.Tests` | L'API de bout en bout (cookie, autorisations, erreurs HTTP) | Mon bar et recettes (400 / 403 / 404 / 409 et messages affichés), propriétaires, notes, persistance au redémarrage, cookie falsifié, identité glissée dans le corps ignorée, session d'un compte retiré rejetée |
+| `Domain.Tests` | Règles métier pures | Faisabilité et préparation (`Bar`, `LigneStock`), doses et volumes, recettes, auteur (qui ne note pas sa recette), notes, `Utilisateur` (Id historique figé en dur, renommage, changement de mot de passe) |
+| `Infrastructure.Tests` | Base réelle, montée comme l'API (`AddPersistance` + migrations) | **Modèle sans migration oubliée**, clés étrangères actives, WAL, jeu initial unique ; dépôts : alias, unicité, transactions, cascade, concurrence ; migrations de données ; hachage ; comptes créés, désactivés, réactivés, réinitialisés depuis la configuration ; sauvegardes (contenu, rotation, cadence, copie avant migration) |
+| `Web.Tests` | L'API de bout en bout (cookie, autorisations, erreurs HTTP) | Mon bar et recettes (400 / 403 / 404 / 409 et messages affichés), propriétaires, notes, persistance au redémarrage, cookie falsifié, identité glissée dans le corps ignorée, session d'un compte retiré rejetée ; « Mon compte » (mot de passe changé : autres sessions fermées ; renommage sans perte ; tenue au redémarrage) ; limitation par compte |
 
 Pas de fournisseur « en mémoire » d'EF Core : il n'applique ni contraintes, ni transactions, ni
 cascades, précisément ce que ces tests doivent vérifier. Les tests clés ont été vérifiés par mutation
@@ -157,7 +156,7 @@ JavaScript. Au démarrage, `GET /api/auth/moi` le restaure avant la première na
 L'URL de l'API est lue depuis `src/env/env.local.json` (`apiUrl`), chargée par `ConfigService`.
 
 **Tests front** — `npm run test:ci` depuis `MixoLoggerFront` (Karma + Jasmine, Chrome sans écran,
-149 tests au 26/09/2026, une dizaine de secondes). `npm test` garde le mode interactif (navigateur
+161 tests au 26/09/2026, une dizaine de secondes). `npm test` garde le mode interactif (navigateur
 visible, relance à chaque modification). Chaque `*.spec.ts` est à côté du fichier qu'il teste :
 
 | Zone | Notamment |
@@ -261,11 +260,12 @@ COCKTAIL  + CreatedAt, ImageUrl?
 ```
 
 Déjà en place :
-- `Utilisateur` (F6, sans persistance) ; `Bar.OwnerId` (un bar par utilisateur) et `Cocktail.AuthorId`
+- `Utilisateur` (F6), en base depuis le 26/09/2026 : `Id` conservé (plus dérivé de l'identifiant qu'à
+  la création), `TamponSecurite` (change avec le mot de passe), `Actif` ; `Bar.OwnerId` (un bar par utilisateur) et `Cocktail.AuthorId`
   (`null` pour les recettes d'origine, en lecture seule) — lot C2.
 - `Note { CocktailId, UtilisateurId, Valeur (1-5), NoteeLe }`, une par couple cocktail / utilisateur :
   noter à nouveau remplace. `ResumeNotes` calcule la moyenne (arrondie au dixième), le nombre de notes
-  et la note de l'utilisateur. Pas de commentaire. L'auteur peut noter sa propre recette — lot C4.
+  et la note de l'utilisateur. Pas de commentaire. L'auteur ne note pas sa propre recette (`Cocktail.EstNotablePar`).
 
 Décisions à trancher avant d'écrire les migrations : cf. §6.
 
@@ -282,15 +282,18 @@ Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
 | `GET` | `/ping` | — | `"pong"` | Healthcheck |
 | `GET` | `/api/cocktails` | — | `CocktailResumeDto[]` | `photoUrl` (`null` sans photo) ; `realisable` + `manques` (`ingredient`, `raison` : `Absent` \| `Insuffisant`) évalués contre **le bar de l'utilisateur connecté** ; `ingredients` (noms canoniques), `modifiable`, `notes` ; tri : réalisables, puis moins de manques, puis nom. Recherche et filtres (F8) faits côté front sur cette liste |
 | `GET` | `/api/cocktails/{id}` | — | `CocktailDetailDto` | `ingredients` (`ingredientId`, `name`, `valeur`, `unite`), `etapes` (`ordre`, `description`), `photoUrl`, `auteur` (nom affiché, `null` pour une recette d'origine), `modifiable` (l'utilisateur connecté en est l'auteur) et `notes` ; `404` si absent |
-| `PUT` | `/api/cocktails/{id}/note` | `{ valeur }` | `NotesDto` | Donne ou remplace sa note (1 à 5), ouvert à tous, recettes d'origine comprises ; `400` hors bornes, `404` si la recette n'existe pas. `NotesDto` = `{ moyenne (au dixième, null sans note), nombre, maNote (null si pas noté) }` |
+| `PUT` | `/api/cocktails/{id}/note` | `{ valeur }` | `NotesDto` | Donne ou remplace sa note (1 à 5), recettes d'origine comprises ; **`403` pour l'auteur de la recette** ; `400` hors bornes, `404` si la recette n'existe pas. `NotesDto` = `{ moyenne (au dixième, null sans note), nombre, maNote (null si pas noté) }` |
 | `DELETE` | `/api/cocktails/{id}/note` | — | `NotesDto` | Retire sa note ; idempotent ; `404` si la recette n'existe pas |
 | `GET` | `/api/cocktails/unites` | — | `string[]` | `mL`, `cL`, `dL`, `L`, `piece`, `feuille`, `trait`, `pincee` |
 | `POST` | `/api/cocktails` | `RecetteSaisie` | `201` + `CocktailDetailDto` | `{ name, description?, photoUrl?, ingredients: [{ name, valeur, unite }], etapes: string[] }` ; ingrédients par nom (alias compris, créés si inconnus **une fois la recette validée**) ; l'utilisateur connecté devient l'auteur ; `400` contenu invalide, `409` nom déjà pris |
 | `PUT` | `/api/cocktails/{id}` | `RecetteSaisie` | `CocktailDetailDto` | Remplace tout le contenu ; mêmes règles ; **`403` si l'utilisateur n'est pas l'auteur** (vérifié avant le contenu) ; `404` si absent. Pas de contrôle de version : deux éditions simultanées gardent la dernière |
 | `DELETE` | `/api/cocktails/{id}` | — | `204` | **`403` si l'utilisateur n'est pas l'auteur** ; `404` si absent. Ses lignes, étapes et notes sont supprimées avec elle (cascade en base) |
-| `POST` | `/api/auth/connexion` | `{ identifiant, motDePasse }` | `UtilisateurDto` + cookie | **Anonyme.** `401` même réponse pour identifiant inconnu et mauvais mot de passe ; `429` au-delà de 5 essais par minute et par IP |
+| `POST` | `/api/auth/connexion` | `{ identifiant, motDePasse }` | `UtilisateurDto` + cookie | **Anonyme.** `401` même réponse pour identifiant inconnu et mauvais mot de passe ; `429` au-delà de 5 essais par minute et par IP, ou de 10 échecs en 15 minutes sur le compte (avec `Retry-After`) |
 | `POST` | `/api/auth/deconnexion` | — | `204` | **Anonyme** (une session expirée doit pouvoir se fermer) |
-| `GET` | `/api/auth/moi` | — | `UtilisateurDto` | `{ id, identifiant, nomAffiche }` ; `401` sans session |
+| `GET` | `/api/auth/moi` | — | `UtilisateurDto` | `{ id, identifiant, nomAffiche }`, lu en base ; `401` sans session |
+| `GET` | `/api/compte` | — | `UtilisateurDto` | Le compte connecté |
+| `PUT` | `/api/compte` | `{ identifiant, nomAffiche? }` | `UtilisateurDto` | Change l'identifiant de connexion et le nom ; l'`Id` ne change pas (bar, recettes, notes suivent) ; `409` identifiant pris, `400` vide |
+| `PUT` | `/api/compte/mot-de-passe` | `{ actuel, nouveau }` | `204` | `400` si l'actuel est faux (pas `401` : la session est valide) ou si le nouveau fait moins de 12 caractères ou est identique ; `429` comme la connexion. Ferme les autres sessions du compte, garde celle-ci |
 | `GET` | `/api/bars` | — | `MyBarDto` | Bar de l'utilisateur connecté, vide tant qu'il n'a rien déclaré |
 | `GET` | `/api/ingredients` | — | `IngredientReferenceDto[]` | Référentiel trié par nom, alias normalisés inclus — alimente l'autocomplétion |
 | `POST` | `/api/bars/MakeCocktails` | `CocktailBarOrder[]` | `MyBarDto` | Tout ou rien ; `409` si infaisable |
@@ -610,12 +613,12 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
 
 | Mesure | Mise en œuvre |
 |--------|---------------|
-| Mots de passe hachés | PBKDF2 via `PasswordHasher<T>` d'ASP.NET Core Identity, sans le reste d'Identity. Hachés au démarrage, jamais conservés en clair |
-| Session | Cookie `mixo_session` : `HttpOnly` (hors de portée d'une faille XSS), `SameSite=Strict` (CSRF), `Secure` hors développement, 14 jours glissants. Pas de JWT, donc pas de rafraîchissement à gérer |
+| Mots de passe hachés | PBKDF2 via `PasswordHasher<T>` (paquet `Microsoft.Extensions.Identity.Core`), sans le reste d'Identity. Seule l'empreinte est en base, jamais le mot de passe |
+| Session | Cookie `mixo_session` : `HttpOnly` (hors de portée d'une faille XSS), `SameSite=Strict` (CSRF), `Secure` hors développement, 14 jours glissants. Pas de JWT, donc pas de rafraîchissement à gérer. Le cookie porte le **tampon de sécurité** du compte : changer son mot de passe ferme les autres sessions |
 | Tout protégé par défaut | Politique d'autorisation de repli : un endpoint est privé sauf `[AllowAnonymous]` explicite |
-| Comptes | Déclarés en configuration **hors dépôt**, pas d'inscription publique (§10.2). Configuration invalide (identifiant vide ou en double, mot de passe < 12 caractères) : l'API refuse de démarrer. Compte retiré : sa session est rejetée à la requête suivante |
+| Comptes | En base, créés depuis la configuration **hors dépôt**, pas d'inscription publique (§10.2). Configuration invalide (identifiant vide ou en double, mot de passe < 12 caractères pour un compte à créer) : l'API refuse de démarrer. Entrée retirée : compte désactivé, sa session est rejetée à la requête suivante. Le titulaire change lui-même mot de passe et identifiant |
 | Énumération des comptes | Même message et même durée de réponse pour un identifiant inconnu et un mauvais mot de passe |
-| Force brute | 5 tentatives de connexion par minute et par IP (`Securite:TentativesDeConnexionParMinute`), `429` au-delà |
+| Force brute | 5 tentatives de connexion par minute et par IP (`Securite:TentativesDeConnexionParMinute`) **et** 10 échecs en 15 minutes par compte (`Securite:EchecsParCompte`, `Securite:FenetreEchecsParCompteMinutes`), `429` au-delà. Identifiants inconnus comptés comme les autres ; une connexion réussie remet le compteur à zéro. Le changement de mot de passe partage ces limites |
 | CORS | Restreint aux origines de `Front:Origines` |
 | Redirection après connexion | Le paramètre `?retour=` n'accepte qu'un chemin interne (pas de `//site` ni d'URL absolue) |
 
@@ -623,10 +626,14 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
 derrière un reverse proxy, la configuration des en-têtes transférés — sans elle, toutes les requêtes
 semblent venir de la même IP et la limitation des tentatives bloque tout le monde à la fois.
 
-**Limites connues** : les comptes ne sont pas persistés (modifier un mot de passe = changer la
-configuration et redémarrer) ; pas de changement de mot de passe par l'utilisateur ; la limitation
-des tentatives est par IP, pas par compte. Renommer l'identifiant d'un compte change son `Id` : il
-perd son bar et la paternité de ses recettes (qui deviennent orphelines, donc non modifiables).
+**Limites connues** (les précédentes — comptes en configuration seulement, mot de passe non modifiable
+par l'utilisateur, limitation par IP seulement, renommage qui faisait perdre bar et recettes — sont
+levées depuis le 26/09/2026) :
+- un tiers peut bloquer un compte en échouant exprès, le temps de la fenêtre (15 minutes) ; c'est le
+  prix d'une limite par compte qui ne révèle pas quels comptes existent ;
+- les compteurs d'échecs sont en mémoire : un redémarrage les remet à zéro ;
+- pas de mot de passe oublié en libre-service : l'administrateur le réinitialise par la configuration ;
+- les sessions ouvertes avant la mise en base des comptes (cookie sans tampon) ont été fermées une fois.
 
 ---
 
@@ -665,13 +672,14 @@ Branche : `feat/mon-bar`, rebasée sur le lot A.
 | **C1** | ~~Modèle `User` + auth back réelle + CORS restreint~~ ✅ livré avec F6 (cookie plutôt que JWT, cf. §8). `Utilisateur.Id` est dérivé de l'identifiant, donc stable d'un redémarrage à l'autre : prêt pour C2 |
 | **C2** | ✅ `Bar.OwnerId` (un bar par utilisateur, vide au départ) et `Cocktail.AuthorId`. Les handlers obtiennent l'appelant par `IUtilisateurCourant` (lu dans la session, jamais dans le corps de la requête). Détail de recette : `auteur` + `modifiable` ; front : « Modifier » et « Supprimer » (avec confirmation) visibles pour l'auteur seul, page d'édition d'une recette d'autrui remplacée par une explication. 7 tests d'intégration à deux comptes, vérifiés par mutation |
 | **C3** | ~~Création / édition de recette (F5)~~ ✅ livrée avant le lot C ; auteur, règle « seul l'auteur modifie » et suppression ✅ ajoutés avec C2. Formulaire en *Reactive Forms* et non en *Signal Forms* : les composants OptimusUI sont des `ControlValueAccessor`, et Mon Bar comme la connexion utilisent déjà les *Reactive Forms* |
-| **C4** | ✅ Notes (F7) et recherche (F8). Recherche et filtres côté front (`utils/recherche-cocktails.ts`) : la liste complète est déjà chargée, à revoir si le catalogue dépasse quelques centaines de recettes. 19 tests domaine et intégration sur les notes, vérifiés par mutation. **Limite** : l'auteur peut noter sa propre recette. (Depuis F10, les notes sont persistées et supprimées en cascade avec leur recette : plus de note orpheline possible.) |
+| **C4** | ✅ Notes (F7) et recherche (F8). Recherche et filtres côté front (`utils/recherche-cocktails.ts`) : la liste complète est déjà chargée, à revoir si le catalogue dépasse quelques centaines de recettes. 19 tests domaine et intégration sur les notes, vérifiés par mutation. ~~**Limite** : l'auteur peut noter sa propre recette.~~ Levée le 26/09/2026 : `403`, et la migration `NotesDesAuteursRetirees` a supprimé les notes existantes de ce type. (Depuis F10, les notes sont persistées et supprimées en cascade avec leur recette : plus de note orpheline possible.) |
 | **C5** | ✅ Images (F9) par adresse `https` (§6.1-5). Colonne `Cocktails.PhotoUrl`, migration `PhotoCocktail`, rédigée au format EF Core 11 sans le SDK 11 (indisponible dans l'environnement de travail) : modèle identique à celui généré par `dotnet-ef` 10, test « aucune migration oubliée » vert |
 
 ### Lot D — Reporté
 
 ~~Persistance~~ ✅ livrée en SQLite (F10). Restent : Docker, déploiement sur le serveur centralisé,
-sauvegardes de la base ; PostgreSQL seulement si SQLite ne suffit plus. Cf. §2.2.
+PostgreSQL seulement si SQLite ne suffit plus. Cf. §2.2. ~~Sauvegardes de la base~~ ✅ automatiques
+depuis le 26/09/2026 (§10.2) ; sur le serveur, reste à copier le dossier `Sauvegardes` hors de la machine.
 
 ---
 
@@ -738,7 +746,22 @@ L'URL de l'API consommée par le front se configure dans `MixoLoggerFront/src/en
 #### Créer les comptes (F6)
 
 **Sans compte configuré, personne ne peut se connecter** : l'API démarre, mais le signale dans son
-journal (« Aucun compte configuré »). Les comptes ne sont **jamais** dans le dépôt.
+journal (« Aucun compte actif »). Les comptes ne sont **jamais** dans le dépôt.
+
+Les comptes sont **en base** (table `Comptes`). La configuration sert à les créer, puis à les
+administrer ; ensuite, chacun change lui-même son mot de passe et son identifiant (« Mon compte »).
+À chaque démarrage, l'API accorde la base avec la configuration :
+
+| Dans la configuration | Effet au démarrage |
+|-----------------------|--------------------|
+| Entrée nouvelle | Compte créé, avec l'`Id` que le compte aurait eu avant (dérivé de l'identifiant) : une base existante retrouve bars, recettes et notes |
+| Entrée existante | Rien : le mot de passe de configuration est **ignoré** et peut être retiré (seule l'empreinte est en base) |
+| Entrée retirée | Compte **désactivé** : connexion et sessions refusées, données conservées. La remettre le réactive |
+| `ReinitialiserMotDePasse: true` | Mot de passe remplacé par celui de la configuration (mot de passe oublié), sessions fermées. **Remettre à `false` ensuite**, sinon chaque démarrage l'écrase |
+
+Une entrée reste attachée à son compte par l'identifiant sous lequel elle l'a créé, même si le titulaire
+en a changé depuis : ne pas modifier `Identifiant` dans la configuration pour renommer un compte (cela
+créerait un second compte), c'est au titulaire de le faire dans « Mon compte ».
 
 En local, dans les *user-secrets* du projet `Web` (stockés dans le profil Windows, hors du dépôt).
 Un compte = trois clés, numérotées à partir de 0 ; remplacer les valeurs d'exemple :
@@ -765,11 +788,13 @@ Sur le serveur, les mêmes clés en variables d'environnement, avec un double so
 `Comptes__0__Identifiant`, `Comptes__0__MotDePasse`… Redémarrer l'API après toute modification.
 
 Règles vérifiées au démarrage, qui refuse de se lancer sinon : identifiant non vide et unique (casse et
-accents ignorés), mot de passe d'au moins 12 caractères. `NomAffiche` est facultatif (l'identifiant sert
-alors de nom).
+accents ignorés), et pas déjà pris par un compte qui l'a choisi en se renommant ; mot de passe d'au
+moins 12 caractères pour un compte à créer ou à réinitialiser. `NomAffiche` est facultatif
+(l'identifiant sert alors de nom) et n'est lu qu'à la création.
 
 Autres réglages, facultatifs : `Front:Origines` (origines autorisées par CORS, par défaut
-`http://localhost:4200`) et `Securite:TentativesDeConnexionParMinute` (par défaut 5).
+`http://localhost:4200`), `Securite:TentativesDeConnexionParMinute` (par IP, par défaut 5),
+`Securite:EchecsParCompte` (par défaut 10) et `Securite:FenetreEchecsParCompteMinutes` (par défaut 15).
 
 #### Base de données (F10)
 
@@ -782,6 +807,18 @@ d'origine) **uniquement si la base est vide**.
   Sur le serveur : `ConnectionStrings__MixoLogger`, idéalement vers un dossier sauvegardé.
 - Repartir de zéro en local : arrêter l'API, supprimer le dossier `MixoLoggerBack/Web/Donnees`, relancer.
 - Les tests d'intégration utilisent chacun une base temporaire et ne touchent jamais celle-ci.
+
+**Sauvegardes automatiques** : copies par `VACUUM INTO`, cohérentes même API en marche, qui s'ouvrent
+telles quelles. Nom : `{base}-{aaaaMMjj-HHmmss-fff}-{motif}.db` (heure UTC).
+- `auto` : vérifié au démarrage puis toutes les heures, une copie dès que la dernière a plus de
+  24 heures. Une API redémarrée souvent sauvegarde donc quand même. Un échec est journalisé, l'API continue.
+- `avant-migration` : avant d'appliquer des migrations à une base existante (jamais pour une base neuve).
+- Les 7 plus récentes de chaque motif sont gardées. Réglages, section `Sauvegarde` : `Active` (par défaut
+  `true`), `Dossier` (par défaut `Sauvegardes` à côté de la base ; relatif au dossier de l'API),
+  `IntervalleHeures` (24), `Conservation` (7).
+- **Restaurer** : arrêter l'API, supprimer `mixologger.db` et ses fichiers `-wal` / `-shm`, copier la
+  sauvegarde choisie à la place sous le nom `mixologger.db`, relancer.
+- Ces copies sont sur la même machine que la base : sur le serveur, les recopier ailleurs (lot D).
 
 Faire évoluer le schéma : modifier `Infrastructure/Persistance` (modèles ou `MixoLoggerDbContext`),
 puis générer une migration avec l'outil local `dotnet-ef` (déclaré dans `dotnet-tools.json`, à la

@@ -3,6 +3,7 @@ using System;
 using Infrastructure.Persistance;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,14 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Persistance.Migrations;
 
 [DbContext(typeof(MixoLoggerDbContext))]
-partial class MixoLoggerDbContextModelSnapshot : ModelSnapshot
+[Migration("20260926120000_NotesDesAuteursRetirees")]
+partial class _20260926120000_NotesDesAuteursRetirees
 {
-    // If you encounter a merge conflict in the line below, it means you need to
-    // discard one of the migration branches and recreate its migrations on top of
-    // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20260926130000_ComptesEnBase";
-
-    protected override void BuildModel(ModelBuilder modelBuilder)
+    /// <inheritdoc />
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
     {
 #pragma warning disable 612, 618
         modelBuilder.HasAnnotation("ProductVersion", "11.0.0-preview.7.26381.103");
@@ -120,56 +118,6 @@ partial class MixoLoggerDbContextModelSnapshot : ModelSnapshot
                 b.HasIndex("IngredientId");
 
                 b.ToTable("CocktailIngredients");
-            });
-
-        modelBuilder.Entity("Infrastructure.Persistance.CompteDonnees", b =>
-            {
-                b.Property<Guid>("Id")
-                    .ValueGeneratedOnAdd()
-                    .HasColumnType("TEXT");
-
-                b.Property<bool>("Actif")
-                    .HasColumnType("INTEGER");
-
-                b.Property<string>("CleConfiguration")
-                    .HasMaxLength(100)
-                    .HasColumnType("TEXT");
-
-                b.Property<DateTime>("CreeLe")
-                    .HasColumnType("TEXT");
-
-                b.Property<string>("EmpreinteMotDePasse")
-                    .IsRequired()
-                    .HasMaxLength(500)
-                    .HasColumnType("TEXT");
-
-                b.Property<string>("Identifiant")
-                    .IsRequired()
-                    .HasMaxLength(100)
-                    .HasColumnType("TEXT");
-
-                b.Property<string>("IdentifiantNormalise")
-                    .IsRequired()
-                    .HasMaxLength(100)
-                    .HasColumnType("TEXT");
-
-                b.Property<string>("NomAffiche")
-                    .IsRequired()
-                    .HasMaxLength(100)
-                    .HasColumnType("TEXT");
-
-                b.Property<Guid>("TamponSecurite")
-                    .HasColumnType("TEXT");
-
-                b.HasKey("Id");
-
-                b.HasIndex("CleConfiguration")
-                    .IsUnique();
-
-                b.HasIndex("IdentifiantNormalise")
-                    .IsUnique();
-
-                b.ToTable("Comptes");
             });
 
         modelBuilder.Entity("Infrastructure.Persistance.EtapeDonnees", b =>

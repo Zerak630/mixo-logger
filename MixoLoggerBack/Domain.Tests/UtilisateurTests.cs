@@ -71,4 +71,63 @@ public class UtilisateurTests
         Assert.ThrowsAny<ArgumentException>(() => new Utilisateur("alice", "", null!));
         Assert.Throws<ArgumentNullException>(() => new Utilisateur(null!, "", Empreinte));
     }
+
+    [Fact]
+    public void Renommer_GardeLeMemeCompte()
+    {
+        var alice = new Utilisateur("alice", "Alice", Empreinte);
+
+        var alicia = alice.Renommer(" Alicia ", " Alicia L. ");
+
+        Assert.Equal(alice.Id, alicia.Id);
+        Assert.Equal("Alicia", alicia.Identifiant);
+        Assert.Equal("alicia", alicia.IdentifiantNormalise);
+        Assert.Equal("Alicia L.", alicia.NomAffiche);
+        Assert.Equal(alice.EmpreinteMotDePasse, alicia.EmpreinteMotDePasse);
+        // Changer d'identifiant ne ferme pas les autres sessions.
+        Assert.Equal(alice.TamponSecurite, alicia.TamponSecurite);
+        Assert.Throws<ArgumentException>(() => alice.Renommer("  ", ""));
+    }
+
+    [Fact]
+    public void ChangerMotDePasse_NouveauTampon_MemeCompte()
+    {
+        var alice = new Utilisateur("alice", "Alice", Empreinte);
+
+        var apres = alice.ChangerMotDePasse("nouvelle-empreinte");
+
+        Assert.Equal(alice.Id, apres.Id);
+        Assert.Equal("nouvelle-empreinte", apres.EmpreinteMotDePasse);
+        Assert.NotEqual(alice.TamponSecurite, apres.TamponSecurite);
+        Assert.ThrowsAny<ArgumentException>(() => alice.ChangerMotDePasse(" "));
+    }
+
+    [Fact]
+    public void Activer_ChangeSeulementLEtat()
+    {
+        var alice = new Utilisateur("alice", "Alice", Empreinte);
+
+        Assert.True(alice.Actif);
+        var desactive = alice.Activer(false);
+        Assert.False(desactive.Actif);
+        Assert.Equal((alice.Id, alice.TamponSecurite), (desactive.Id, desactive.TamponSecurite));
+    }
+
+    [Fact]
+    public void Reconstituer_IdVide_Leve()
+    {
+        Assert.Throws<ArgumentException>(() => Utilisateur.Reconstituer(Guid.Empty, "alice", "", Empreinte, Guid.NewGuid(), true, DateTime.UtcNow));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("onze-carac.")]
+    public void MotDePasseTropCourt_Leve(string? motDePasse)
+    {
+        var erreur = Assert.Throws<ArgumentException>(() => Utilisateur.VerifierMotDePasse(motDePasse));
+
+        Assert.StartsWith("Le mot de passe doit faire au moins 12 caractères.", erreur.Message);
+        Utilisateur.VerifierMotDePasse("douze-caract");
+    }
 }

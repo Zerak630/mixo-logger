@@ -54,6 +54,7 @@ describe('App', () => {
 		expect(page.textContent).toContain('Cocktails');
 		expect(page.textContent).toContain('Mon bar');
 		expect(page.textContent).toContain('Alice Lemaire');
+		expect(page.querySelector('a.session__compte')?.getAttribute('href')).toBe('/compte');
 		expect(page.textContent).toContain('Se déconnecter');
 	});
 

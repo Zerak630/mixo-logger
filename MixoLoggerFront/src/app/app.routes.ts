@@ -25,6 +25,11 @@ export const routes: Routes = [
 				loadChildren: () => import('./features/cocktails/cocktails.routes')
 			},
 			{
+				path: 'compte',
+				loadComponent: () => import('./features/compte/compte.component'),
+				title: 'Mon compte'
+			},
+			{
 				path: 'my_bar',
 				loadComponent: () => import('./features/mybar/layout/mybar.layout'),
 				resolve: { bar: myBarResolver },

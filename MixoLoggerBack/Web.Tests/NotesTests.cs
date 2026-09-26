@@ -27,6 +27,8 @@ public class NotesTests : IClassFixture<NotesTests.ApiDeTest>
             builder.UseSetting("Comptes:0:MotDePasse", MotDePasse);
             builder.UseSetting("Comptes:1:Identifiant", "bob");
             builder.UseSetting("Comptes:1:MotDePasse", MotDePasse);
+            builder.UseSetting("Comptes:2:Identifiant", "carole");
+            builder.UseSetting("Comptes:2:MotDePasse", MotDePasse);
             builder.UseSetting("Securite:TentativesDeConnexionParMinute", "1000");
         }
     }
@@ -91,18 +93,24 @@ public class NotesTests : IClassFixture<NotesTests.ApiDeTest>
     {
         var alice = await ConnecterAsync("alice");
         var bob = await ConnecterAsync("bob");
+        var carole = await ConnecterAsync("carole");
         string id = await CreerRecetteAsync(alice);
 
-        await NoterAsync(alice, id, 5);
+        await NoterAsync(carole, id, 5);
         JsonElement apresBob = await NoterAsync(bob, id, 2);
 
         Assert.Equal(3.5, Moyenne(apresBob));
         Assert.Equal(2, apresBob.GetProperty("nombre").GetInt32());
         Assert.Equal(2, MaNote(apresBob));
 
+        JsonElement vuParCarole = await NotesDansLaListeAsync(carole, id);
+        Assert.Equal(3.5, Moyenne(vuParCarole));
+        Assert.Equal(5, MaNote(vuParCarole));
+
+        // L'auteur voit la moyenne, sans note personnelle.
         JsonElement vuParAlice = await NotesDansLaListeAsync(alice, id);
         Assert.Equal(3.5, Moyenne(vuParAlice));
-        Assert.Equal(5, MaNote(vuParAlice));
+        Assert.Null(MaNote(vuParAlice));
 
         JsonElement detailPourBob = (await bob.GetFromJsonAsync<JsonElement>($"/api/cocktails/{id}", Jeton)).GetProperty("notes");
         Assert.Equal(2, MaNote(detailPourBob));
@@ -112,10 +120,11 @@ public class NotesTests : IClassFixture<NotesTests.ApiDeTest>
     public async Task NoterANouveau_RemplaceLaNote()
     {
         var alice = await ConnecterAsync("alice");
+        var bob = await ConnecterAsync("bob");
         string id = await CreerRecetteAsync(alice);
 
-        await NoterAsync(alice, id, 1);
-        JsonElement notes = await NoterAsync(alice, id, 4);
+        await NoterAsync(bob, id, 1);
+        JsonElement notes = await NoterAsync(bob, id, 4);
 
         Assert.Equal(1, notes.GetProperty("nombre").GetInt32());
         Assert.Equal(4.0, Moyenne(notes));
@@ -127,8 +136,9 @@ public class NotesTests : IClassFixture<NotesTests.ApiDeTest>
     {
         var alice = await ConnecterAsync("alice");
         var bob = await ConnecterAsync("bob");
+        var carole = await ConnecterAsync("carole");
         string id = await CreerRecetteAsync(alice);
-        await NoterAsync(alice, id, 5);
+        await NoterAsync(carole, id, 5);
         await NoterAsync(bob, id, 3);
 
         var reponse = await bob.DeleteAsync($"/api/cocktails/{id}/note", Jeton);
@@ -149,9 +159,10 @@ public class NotesTests : IClassFixture<NotesTests.ApiDeTest>
     public async Task NoteHorsBornes_400(int valeur)
     {
         var alice = await ConnecterAsync("alice");
+        var bob = await ConnecterAsync("bob");
         string id = await CreerRecetteAsync(alice);
 
-        var reponse = await alice.PutAsJsonAsync($"/api/cocktails/{id}/note", new { valeur }, Jeton);
+        var reponse = await bob.PutAsJsonAsync($"/api/cocktails/{id}/note", new { valeur }, Jeton);
 
         Assert.Equal(HttpStatusCode.BadRequest, reponse.StatusCode);
         Assert.Equal(0, (await NotesDansLaListeAsync(alice, id)).GetProperty("nombre").GetInt32());
@@ -179,11 +190,25 @@ public class NotesTests : IClassFixture<NotesTests.ApiDeTest>
     }
 
     [Fact]
-    public async Task SupprimerLaRecette_SupprimeSesNotes()
+    public async Task LAuteur_NePeutPasNoterSaRecette_403_EtRienNestEnregistre()
     {
         var alice = await ConnecterAsync("alice");
         string id = await CreerRecetteAsync(alice);
-        await NoterAsync(alice, id, 5);
+
+        var reponse = await alice.PutAsJsonAsync($"/api/cocktails/{id}/note", new { valeur = 5 }, Jeton);
+
+        Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);
+        Assert.Contains("est ta recette : tu ne peux pas la noter.", await reponse.DetailAsync());
+        Assert.Equal(0, (await NotesDansLaListeAsync(alice, id)).GetProperty("nombre").GetInt32());
+    }
+
+    [Fact]
+    public async Task SupprimerLaRecette_SupprimeSesNotes()
+    {
+        var alice = await ConnecterAsync("alice");
+        var bob = await ConnecterAsync("bob");
+        string id = await CreerRecetteAsync(alice);
+        await NoterAsync(bob, id, 5);
 
         using IServiceScope portee = _api.Services.CreateScope();
         INoteRepository depot = portee.ServiceProvider.GetRequiredService<INoteRepository>();

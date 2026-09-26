@@ -268,6 +268,27 @@ public class CocktailAuteurTests
 	}
 
 	[Fact]
+	public void LAuteur_NePeutPasNoterSaRecette_LesAutresSi()
+	{
+		var recette = RecetteDe(Alice);
+
+		Assert.False(recette.EstNotablePar(Alice));
+		Assert.True(recette.EstNotablePar(Bob));
+		recette.VerifierNotablePar(Bob);
+		var erreur = Assert.Throws<ActionNonAutoriseeException>(() => recette.VerifierNotablePar(Alice));
+		Assert.Equal("« Mojito » est ta recette : tu ne peux pas la noter.", erreur.Message);
+	}
+
+	[Fact]
+	public void RecetteDOrigine_NotableParTous()
+	{
+		var recette = RecetteDe(null);
+
+		Assert.True(recette.EstNotablePar(Alice));
+		Assert.True(recette.EstNotablePar(Bob));
+	}
+
+	[Fact]
 	public void Modifier_ConserveLAuteur()
 	{
 		var modifie = RecetteDe(Alice).Modifier("Mojito royal", [new CocktailIngredient(new Ingredient("Rhum blanc"), 5, UniteVolume.Centilitre)], EtapeRecette.FromOrderedList(["Verser"]));

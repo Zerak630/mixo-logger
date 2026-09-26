@@ -36,6 +36,25 @@ export default class AuthService {
 	}
 
 	/**
+	 * Change l'identifiant de connexion et le nom affiché ; le compte reste le même (bar, recettes).
+	 * Rejette avec la réponse d'erreur (409 identifiant pris, 400 identifiant vide).
+	 */
+	public async modifierCompte(identifiant: string, nomAffiche: string): Promise<Utilisateur> {
+		const utilisateur = await firstValueFrom(this.http.put<Utilisateur>("/compte", { identifiant, nomAffiche }));
+
+		this.userService.setUser(utilisateur);
+		return utilisateur;
+	}
+
+	/**
+	 * Change le mot de passe. Les autres sessions du compte sont fermées, celle-ci reste ouverte.
+	 * Rejette avec la réponse d'erreur (400 mot de passe actuel faux ou nouveau refusé, 429).
+	 */
+	public async changerMotDePasse(actuel: string, nouveau: string): Promise<void> {
+		await firstValueFrom(this.http.put<void>("/compte/mot-de-passe", { actuel, nouveau }));
+	}
+
+	/**
 	 * Au démarrage : y a-t-il déjà une session (cookie encore valide) ? Ne lève jamais —
 	 * une API injoignable ou un 401 laissent simplement l'utilisateur déconnecté.
 	 */

@@ -1,12 +1,12 @@
 <section class="compte" aria-labelledby="compte-titre">
   <h2 id="compte-titre" class="compte__titre">Mon compte</h2>
 
-  <form class="compte__carte" [formGroup]="profil" (ngSubmit)="enregistrerProfil()" novalidate aria-labelledby="profil-titre">
+  <form class="compte__carte carte" [formGroup]="profil" (ngSubmit)="enregistrerProfil()" novalidate aria-labelledby="profil-titre">
     <h3 id="profil-titre" class="compte__intertitre">Identité</h3>
     <p class="compte__aide">Changer d'identifiant ne fait rien perdre : ton bar, tes recettes et tes notes te suivent.</p>
 
     @if (erreurProfil(); as message) {
-      <p class="compte__erreur" role="alert">{{ message }}</p>
+      <p class="bandeau-erreur" role="alert">{{ message }}</p>
     }
 
     <div class="champ">
@@ -27,12 +27,12 @@
     <p-button type="submit" label="Enregistrer" icon="pi pi-check" [loading]="profilEnCours()" />
   </form>
 
-  <form class="compte__carte" [formGroup]="motDePasse" (ngSubmit)="changerMotDePasse()" novalidate aria-labelledby="mdp-titre">
+  <form class="compte__carte carte" [formGroup]="motDePasse" (ngSubmit)="changerMotDePasse()" novalidate aria-labelledby="mdp-titre">
     <h3 id="mdp-titre" class="compte__intertitre">Mot de passe</h3>
     <p class="compte__aide">Tes sessions ouvertes sur d'autres appareils seront fermées ; celle-ci reste ouverte.</p>
 
     @if (erreurMotDePasse(); as message) {
-      <p class="compte__erreur" role="alert">{{ message }}</p>
+      <p class="bandeau-erreur" role="alert">{{ message }}</p>
     }
 
     <!-- Identifiant caché : les gestionnaires de mots de passe savent ainsi quel compte mettre à jour. -->

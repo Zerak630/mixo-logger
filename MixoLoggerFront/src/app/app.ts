@@ -1,10 +1,7 @@
 import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
-import { MenuItem } from '@openng/optimus-ui/api';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Avatar } from '@openng/optimus-ui/avatar';
 import { Button } from '@openng/optimus-ui/button';
-import { DialogService } from '@openng/optimus-ui/dynamicdialog';
-import { Menubar } from '@openng/optimus-ui/menubar';
 import { ToastModule } from '@openng/optimus-ui/toast';
 import AuthService from './core/auth.service';
 import UserService from './core/user.service';
@@ -14,13 +11,10 @@ import UserService from './core/user.service';
 	imports: [
 		RouterOutlet,
 		RouterLink,
-		Menubar,
+		RouterLinkActive,
 		Avatar,
 		Button,
 		ToastModule
-	],
-	providers: [
-		DialogService
 	],
 	templateUrl: './app.html',
 	changeDetection: ChangeDetectionStrategy.Eager,
@@ -29,18 +23,13 @@ import UserService from './core/user.service';
 export class App {
 	protected readonly title = signal('MixoLoggerFront');
 
-	/** Seulement des écrans qui existent : « À propos » et « Contact » pointaient vers des routes absentes. */
-	protected readonly menuItems: MenuItem[] = [
-		{
-			label: "Cocktails",
-			icon: "pi pi-list",
-			routerLink: "/cocktails"
-		},
-		{
-			label: "Mon bar",
-			icon: "pi pi-box",
-			routerLink: "/my_bar"
-		},
+	/**
+	 * Deux liens : une navigation écrite à la main, plutôt que le Menubar d'OptimusUI (38 kB dans
+	 * le chargement initial, pour un menu sans sous-menu).
+	 */
+	protected readonly liens = [
+		{ libelle: "Cocktails", icone: "pi pi-list", chemin: "/cocktails" },
+		{ libelle: "Mon bar", icone: "pi pi-box", chemin: "/my_bar" }
 	];
 
 	protected readonly annee = new Date().getFullYear();

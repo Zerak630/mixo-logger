@@ -1,15 +1,10 @@
-// Palette commune définie dans src/styles.scss (docs/MVP.md §5.1).
-$fond-surface: var(--mixo-surface);
-$texte: var(--mixo-texte);
-$texte-secondaire: var(--mixo-texte-secondaire);
-$accent: var(--mixo-accent);
-$bordure: var(--mixo-bordure);
+// Palette et motifs communs (.carte, .champ) : src/styles.scss (docs/MVP.md §5.1).
 
 .mon-bar {
     max-width: 56rem;
     margin: 0 auto;
     padding: 1.5rem 1rem 3rem;
-    color: $texte;
+    color: var(--mixo-texte);
 
     &__entete {
         display: flex;
@@ -28,7 +23,7 @@ $bordure: var(--mixo-bordure);
 
     &__compte {
         margin: 0;
-        color: $texte-secondaire;
+        color: var(--mixo-texte-secondaire);
     }
 }
 
@@ -38,10 +33,7 @@ $bordure: var(--mixo-bordure);
     gap: 1rem;
     padding: 1.25rem;
     margin-bottom: 2rem;
-    background: $fond-surface;
-    border: 1px solid $bordure;
-    border-left: 3px solid $accent;
-    border-radius: 12px;
+    border-left: 3px solid var(--mixo-accent);
 
     &__titre {
         margin: 0;
@@ -62,15 +54,6 @@ $bordure: var(--mixo-bordure);
 }
 
 .champ {
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-
-    &__label {
-        font-size: 0.875rem;
-        color: $texte-secondaire;
-    }
-
     &--ingredient {
         flex: 1 1 16rem;
     }
@@ -92,11 +75,9 @@ $bordure: var(--mixo-bordure);
         }
     }
 
+    // Seul champ de la ligne à passer à la ligne suivante.
     &__erreur {
         flex-basis: 100%;
-        margin: 0;
-        font-size: 0.875rem;
-        color: var(--mixo-erreur);
     }
 }
 
@@ -111,7 +92,7 @@ $bordure: var(--mixo-bordure);
         align-items: center;
         gap: 1rem;
         padding: 0.625rem 0.25rem;
-        border-bottom: 1px solid $bordure;
+        border-bottom: 1px solid var(--mixo-bordure);
         transition: opacity 0.2s;
 
         &--en-cours {
@@ -128,7 +109,7 @@ $bordure: var(--mixo-bordure);
     }
 
     &__nom {
-        color: $texte;
+        color: var(--mixo-texte);
     }
 
     // Une ligne en suivi précis affiche son volume : on la distingue de la simple
@@ -136,17 +117,17 @@ $bordure: var(--mixo-bordure);
     &__volume {
         padding: 0.0625rem 0.5rem;
         font-size: 0.8125rem;
-        color: $texte;
-        border: 1px solid $accent;
+        color: var(--mixo-texte);
+        border: 1px solid var(--mixo-accent);
         border-radius: 999px;
     }
 
     &__vide {
         padding: 2rem 1rem;
         text-align: center;
-        color: $texte-secondaire;
-        background: $fond-surface;
-        border-radius: 12px;
+        color: var(--mixo-texte-secondaire);
+        background: var(--mixo-surface);
+        border-radius: var(--mixo-rayon);
     }
 }
 

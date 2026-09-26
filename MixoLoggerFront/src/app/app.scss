@@ -1,3 +1,61 @@
+// En-tête : mêmes jetons que le Menubar d'OptimusUI qu'il remplace (--p-content-*, --p-navigation-*),
+// pour rester aligné sur le thème.
+.entete {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem 1rem;
+	padding: 0.5rem 0.75rem;
+	color: var(--p-content-color);
+	background: var(--p-content-background);
+	border: 1px solid var(--p-content-border-color);
+	border-radius: var(--p-content-border-radius);
+
+	// Marges verticales par défaut du h1 gardées : elles donnaient sa hauteur à l'ancien en-tête.
+	&__titre {
+		margin-right: 0.5rem;
+	}
+}
+
+.navigation {
+	flex: 1;
+
+	&__liste {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	&__lien {
+		display: flex;
+		align-items: center;
+		gap: var(--p-navigation-item-gap);
+		padding: var(--p-navigation-item-padding);
+		border-radius: var(--p-navigation-item-border-radius);
+		color: var(--p-navigation-item-color);
+		text-decoration: none;
+
+		.pi {
+			color: var(--p-navigation-item-icon-color);
+		}
+
+		&:hover,
+		&:focus-visible,
+		&--actif {
+			color: var(--p-navigation-item-focus-color);
+			background: var(--p-navigation-item-focus-background);
+		}
+
+		&:focus-visible {
+			outline: 1px solid var(--p-focus-ring-color);
+			outline-offset: 0;
+		}
+	}
+}
+
 .session {
 	display: flex;
 	align-items: center;
@@ -13,7 +71,7 @@
 
 		&:hover,
 		&:focus-visible {
-			background: var(--mixo-surface);
+			background: var(--p-navigation-item-focus-background);
 		}
 	}
 

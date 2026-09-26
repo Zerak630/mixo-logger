@@ -1,13 +1,9 @@
-// Palette commune : src/styles.scss (docs/MVP.md §5.1).
+// Palette et motifs communs (.carte, .bandeau-erreur, .champ) : src/styles.scss (docs/MVP.md §5.1).
 
 .edition {
   max-width: 48rem;
   margin: 1.5rem auto 3rem;
   padding: 1.5rem;
-  color: var(--mixo-texte);
-  background: var(--mixo-surface);
-  border: 1px solid var(--mixo-bordure);
-  border-radius: 12px;
 
   &__surtitre {
     margin: 0 0 0.25rem;
@@ -23,19 +19,7 @@
   }
 
   &__erreur-globale {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 1.25rem 0 0;
-    padding: 0.75rem 1rem;
-    color: var(--mixo-texte);
-    border: 1px solid var(--mixo-erreur);
-    border-left-width: 4px;
-    border-radius: 8px;
-
-    .pi {
-      color: var(--mixo-erreur);
-    }
+    margin-top: 1.25rem;
   }
 
   &__bloc {
@@ -90,43 +74,11 @@
   }
 }
 
-.champ {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  min-width: 0;
-
-  &__label {
-    font-size: 0.875rem;
-    color: var(--mixo-texte-secondaire);
-  }
-
-  &__requis {
-    color: var(--mixo-erreur);
-  }
-
-  &__facultatif {
-    font-size: 0.8125rem;
-  }
-
-  &__erreur {
-    margin: 0;
-    font-size: 0.8125rem;
-    color: var(--mixo-erreur);
-  }
-
-  &__aide {
-    margin: 0;
-    font-size: 0.8125rem;
-    color: var(--mixo-texte-secondaire);
-  }
-
-  &__apercu {
-    max-width: 12rem;
-    max-height: 9rem;
-    object-fit: cover;
-    border-radius: 8px;
-  }
+.champ__apercu {
+  max-width: 12rem;
+  max-height: 9rem;
+  object-fit: cover;
+  border-radius: var(--p-border-radius-lg);
 }
 
 .lignes {

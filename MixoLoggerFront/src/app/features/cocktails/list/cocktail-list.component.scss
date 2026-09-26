@@ -69,7 +69,7 @@
   text-align: center;
   color: var(--mixo-texte-secondaire);
   background: var(--mixo-surface);
-  border-radius: 12px;
+  border-radius: var(--mixo-rayon);
 
   // Le lien doit rester identifiable comme tel sur ce fond.
   a,

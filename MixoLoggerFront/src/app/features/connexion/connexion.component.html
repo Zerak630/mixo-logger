@@ -1,10 +1,10 @@
 <section class="connexion">
-  <form class="connexion__carte" [formGroup]="formulaire" (ngSubmit)="seConnecter()" novalidate aria-labelledby="connexion-titre">
+  <form class="connexion__carte carte" [formGroup]="formulaire" (ngSubmit)="seConnecter()" novalidate aria-labelledby="connexion-titre">
     <h2 id="connexion-titre" class="connexion__titre">Connexion</h2>
     <p class="connexion__intro">MixoLogger est réservé à ses membres. Les comptes sont créés par l'administrateur.</p>
 
     @if (erreur(); as message) {
-      <p class="connexion__erreur" role="alert">
+      <p class="bandeau-erreur" role="alert">
         <span class="pi pi-exclamation-triangle" aria-hidden="true"></span>
         {{ message }}
       </p>

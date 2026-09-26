@@ -1,19 +1,22 @@
 /* You can add global styles to this file, and also import other style files */
+@use "styles/communs";
 @import "@openng/icons/openng-icons.css";
 
-// Palette de l'application — docs/MVP.md §5.1. Source unique : les écrans utilisent ces
-// variables plutôt que de recopier les valeurs, pour ne plus dériver les uns des autres.
-// Le violet électrique n'atteint pas le contraste AA sur le fond : accents uniquement.
+// Palette de l'application — docs/MVP.md §5.1. Les couleurs sont définies une seule fois, dans le
+// preset d'OptimusUI (app/styles/customTheme.ts) ; ces variables n'en sont que des alias, aux noms
+// du métier, pour que composants OptimusUI et écrans ne puissent plus dériver les uns des autres.
+// Le violet électrique n'atteint pas le contraste AA pour du texte : accents uniquement.
 :root {
-	--mixo-fond: #0A0A0A;
-	--mixo-surface: #1E1E1E;
-	--mixo-accent: #8A2BE2;
-	--mixo-accent-fonce: #6A0DAD;
-	--mixo-texte: #F5F5F5;
-	--mixo-texte-secondaire: #E0E0E0;
-	--mixo-bordure: rgba(224, 224, 224, 0.15);
-	--mixo-erreur: #FF8A80;
-	--mixo-succes: #B9F6CA;
+	--mixo-fond: var(--p-surface-950);
+	--mixo-surface: var(--p-content-background);
+	--mixo-accent: var(--p-primary-color);
+	--mixo-accent-fonce: var(--p-primary-active-color);
+	--mixo-texte: var(--p-text-color);
+	--mixo-texte-secondaire: var(--p-surface-200);
+	--mixo-bordure: var(--p-content-border-color);
+	--mixo-erreur: var(--p-red-400);
+	--mixo-succes: var(--p-green-200);
+	--mixo-rayon: var(--p-border-radius-xl);
 }
 
 // Le thème est sombre quel que soit le réglage du poste (cf. darkModeSelector dans

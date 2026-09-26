@@ -1,28 +1,36 @@
-<header>
+<header class="entete">
+	<h1 class="entete__titre">MixoLogger</h1>
+
 	<!-- Sans session, pas de navigation : seule la page de connexion est accessible (F6). -->
-	<p-menubar [model]="userService.isConnected() ? menuItems : []">
-		<ng-template #start>
-			<h1>MixoLogger</h1>
-		</ng-template>
-		<ng-template #end>
-			@if (userService.utilisateur(); as utilisateur) {
-				<div class="session">
-					<a class="session__compte" routerLink="/compte" title="Mon compte">
-						<p-avatar [label]="userService.initiales()" shape="circle" aria-hidden="true" />
-						<span class="session__nom">{{ utilisateur.nomAffiche }}</span>
-						<span class="sr-only">(mon compte)</span>
-					</a>
-					<p-button
-						label="Se déconnecter"
-						icon="pi pi-sign-out"
-						severity="secondary"
-						[text]="true"
-						[loading]="deconnexionEnCours()"
-						(onClick)="seDeconnecter()" />
-				</div>
-			}
-		</ng-template>
-	</p-menubar>
+	@if (userService.utilisateur(); as utilisateur) {
+		<nav class="navigation" aria-label="Navigation principale">
+			<ul class="navigation__liste">
+				@for (lien of liens; track lien.chemin) {
+					<li>
+						<a class="navigation__lien" [routerLink]="lien.chemin" routerLinkActive="navigation__lien--actif" ariaCurrentWhenActive="page">
+							<span [class]="lien.icone" aria-hidden="true"></span>
+							{{ lien.libelle }}
+						</a>
+					</li>
+				}
+			</ul>
+		</nav>
+
+		<div class="session">
+			<a class="session__compte" routerLink="/compte" title="Mon compte">
+				<p-avatar [label]="userService.initiales()" shape="circle" aria-hidden="true" />
+				<span class="session__nom">{{ utilisateur.nomAffiche }}</span>
+				<span class="sr-only">(mon compte)</span>
+			</a>
+			<p-button
+				label="Se déconnecter"
+				icon="pi pi-sign-out"
+				severity="secondary"
+				[text]="true"
+				[loading]="deconnexionEnCours()"
+				(onClick)="seDeconnecter()" />
+		</div>
+	}
 	<p-toast/>
 </header>
 

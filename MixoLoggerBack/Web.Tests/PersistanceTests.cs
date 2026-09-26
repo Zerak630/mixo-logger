@@ -53,7 +53,7 @@ public class PersistanceTests
 
         try
         {
-            string id;
+            string id, mojito;
 
             // Première vie de l'API : une recette, un bar, une note.
             await using (var baseDeDonnees = new ApiAvecBaseTemporaire(fichier))
@@ -67,7 +67,10 @@ public class PersistanceTests
 
                 (await alice.PostAsJsonAsync("/api/bars/ingredients", new { name = "white rum", quantity = new { value = 70, unit = "cL" } }, Jeton)).EnsureSuccessStatusCode();
                 (await alice.PostAsJsonAsync("/api/bars/ingredients", new { name = "Gin", niveau = "PresqueFinie" }, Jeton)).EnsureSuccessStatusCode();
-                (await alice.PutAsJsonAsync($"/api/cocktails/{id}/note", new { valeur = 4 }, Jeton)).EnsureSuccessStatusCode();
+                // Une recette d'origine : l'auteur ne note pas la sienne.
+                mojito = (await alice.GetFromJsonAsync<JsonElement>("/api/cocktails", Jeton)).EnumerateArray()
+                    .Single(c => c.GetProperty("name").GetString() == "Mojito").GetProperty("id").GetString()!;
+                (await alice.PutAsJsonAsync($"/api/cocktails/{mojito}/note", new { valeur = 4 }, Jeton)).EnsureSuccessStatusCode();
             }
 
             // Seconde vie, sur le même fichier.
@@ -80,7 +83,7 @@ public class PersistanceTests
                 Assert.Equal("Gin Smash maison", recette.GetProperty("name").GetString());
                 Assert.Equal("Pour vérifier la persistance", recette.GetProperty("description").GetString());
                 Assert.True(recette.GetProperty("modifiable").GetBoolean());
-                Assert.Equal(4, recette.GetProperty("notes").GetProperty("maNote").GetInt32());
+                Assert.Equal(4, (await alice.GetFromJsonAsync<JsonElement>($"/api/cocktails/{mojito}", Jeton)).GetProperty("notes").GetProperty("maNote").GetInt32());
 
                 // Ordre des ingrédients, doses (décimale et décompte) et étapes conservés.
                 var ingredients = recette.GetProperty("ingredients").EnumerateArray().ToList();

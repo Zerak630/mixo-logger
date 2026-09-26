@@ -164,6 +164,15 @@ describe("CocktailDetailComponent", () => {
 			expect(page.querySelector(".notes__moyenne")!.textContent).toContain("(3 notes)");
 		});
 
+		it("ne propose pas à l'auteur de noter sa propre recette", async () => {
+			const page = await afficher({ modifiable: true, auteur: "Alice" });
+
+			expect(page.querySelector("p-rating")).toBeNull();
+			expect(page.textContent).toContain("C'est ta recette : les autres membres la notent.");
+			// La moyenne des autres reste affichée.
+			expect(page.querySelector(".notes__moyenne")!.textContent).toContain("4,0");
+		});
+
 		it("n'envoie rien si la note ne change pas", async () => {
 			await afficher({ notes: { moyenne: 4, nombre: 2, maNote: 4 } });
 

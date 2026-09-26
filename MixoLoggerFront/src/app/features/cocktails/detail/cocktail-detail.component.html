@@ -56,18 +56,23 @@
         }
       </p>
 
-      <div class="notes__perso">
-        <span id="detail-ma-note" class="notes__libelle">{{ notes().maNote === null ? 'Donne ta note' : 'Ta note' }}</span>
-        <p-rating
-          [ngModel]="etoiles()"
-          (ngModelChange)="noter($event)"
-          [readonly]="notationEnCours()"
-          aria-labelledby="detail-ma-note" />
-        @if (notes().maNote !== null) {
-          <p-button label="Retirer" severity="secondary" [text]="true" size="small"
-            [disabled]="notationEnCours()" (onClick)="retirerNote()" />
-        }
-      </div>
+      <!-- L'API refuse la note de l'auteur (403) : inutile de lui proposer les étoiles. -->
+      @if (cocktail().modifiable) {
+        <p class="notes__libelle">C'est ta recette : les autres membres la notent.</p>
+      } @else {
+        <div class="notes__perso">
+          <span id="detail-ma-note" class="notes__libelle">{{ notes().maNote === null ? 'Donne ta note' : 'Ta note' }}</span>
+          <p-rating
+            [ngModel]="etoiles()"
+            (ngModelChange)="noter($event)"
+            [readonly]="notationEnCours()"
+            aria-labelledby="detail-ma-note" />
+          @if (notes().maNote !== null) {
+            <p-button label="Retirer" severity="secondary" [text]="true" size="small"
+              [disabled]="notationEnCours()" (onClick)="retirerNote()" />
+          }
+        </div>
+      }
     </div>
   </section>
 

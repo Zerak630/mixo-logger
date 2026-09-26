@@ -1,6 +1,8 @@
 using Infrastructure.Persistance;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -112,6 +114,35 @@ public class SchemaTests : BaseDeTest
             }
 
             Assert.True(File.Exists(Path.Combine(racine, "sous", "dossier", "base.db")));
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            try { Directory.Delete(racine, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
+    public async Task Migration_NotesDesAuteurs_RetireLaNoteDeLAuteurSeulement()
+    {
+        string racine = Path.Combine(Path.GetTempPath(), $"mixologger-migration-{Guid.NewGuid():N}");
+        Guid auteur = Guid.NewGuid(), autre = Guid.NewGuid(), recette = Guid.NewGuid();
+
+        try
+        {
+            await using ServiceProvider services = Construire("Data Source=base.db", racine);
+            await using AsyncServiceScope portee = services.CreateAsyncScope();
+            MixoLoggerDbContext db = portee.ServiceProvider.GetRequiredService<MixoLoggerDbContext>();
+            Directory.CreateDirectory(racine);
+
+            // La base telle qu'avant la règle : l'auteur a noté sa propre recette.
+            await db.GetService<IMigrator>().MigrateAsync("20260926094612_PhotoCocktail", Jeton);
+            await db.Database.ExecuteSqlAsync($"""INSERT INTO "Cocktails" ("Id", "Nom", "NomNormalise", "AuteurId") VALUES ({recette}, 'Avant la règle', 'avant la regle', {auteur})""", Jeton);
+            await db.Database.ExecuteSqlAsync($"""INSERT INTO "Notes" ("CocktailId", "UtilisateurId", "Valeur", "NoteeLe") VALUES ({recette}, {auteur}, 5, {DateTime.UtcNow}), ({recette}, {autre}, 3, {DateTime.UtcNow})""", Jeton);
+
+            await db.Database.MigrateAsync(Jeton);
+
+            Assert.Equal([autre], await db.Notes.Where(n => n.CocktailId == recette).Select(n => n.UtilisateurId).ToListAsync(Jeton));
         }
         finally
         {

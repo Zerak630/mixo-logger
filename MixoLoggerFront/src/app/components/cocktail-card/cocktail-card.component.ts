@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, input, output, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, computed, inject, input, output, ChangeDetectionStrategy, linkedSignal, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ConfirmationService, MessageService } from '@openng/optimus-ui/api';
 import { Button } from '@openng/optimus-ui/button';
@@ -36,8 +36,14 @@ export class CocktailCardComponent {
   private readonly messageService = inject(MessageService);
   private readonly partageService = inject(PartageService);
 
-  /** Couleur du visuel, propre à la recette, en attendant les photos (F9). */
+  /** Couleur du visuel, propre à la recette : fond de la photo, ou illustration sans photo. */
   public readonly teinte = computed(() => teinteCocktail(this.cocktail().name));
+
+  /** Vrai si la photo n'a pas pu être chargée (lien mort, hébergeur injoignable). Remis à zéro avec la recette. */
+  public readonly photoEnErreur = linkedSignal({ source: () => this.cocktail().photoUrl, computation: () => false });
+
+  /** Photo à afficher (F9) ; `null` pour l'illustration générée à partir du nom. */
+  public readonly photo = computed(() => this.photoEnErreur() ? null : this.cocktail().photoUrl);
 
   public readonly preparationEnCours = signal(false);
 

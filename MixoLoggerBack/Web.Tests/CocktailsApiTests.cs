@@ -73,6 +73,8 @@ public class CocktailsApiTests(ApiAvecComptes api) : IClassFixture<ApiAvecCompte
         { """{"name":"Quantité nulle","ingredients":[{"name":"Gin","valeur":0,"unite":"cL"}],"etapes":["Verser"]}""", "La quantité doit être supérieure à zéro." },
         { """{"name":"Quantité négative","ingredients":[{"name":"Gin","valeur":-3,"unite":"cL"}],"etapes":["Verser"]}""", "La quantité doit être supérieure à zéro." },
         { """{"name":"Doublon par alias","ingredients":[{"name":"rhum","valeur":4,"unite":"cL"},{"name":"White Rum","valeur":1,"unite":"cL"}],"etapes":["Verser"]}""", "L'ingrédient « Rhum blanc » apparaît plusieurs fois" },
+        { """{"name":"Photo en http","photoUrl":"http://images.example/a.jpg","ingredients":[{"name":"Gin","valeur":4,"unite":"cL"}],"etapes":["Verser"]}""", "La photo doit être une adresse complète commençant par https://." },
+        { """{"name":"Photo en script","photoUrl":"javascript:alert(1)","ingredients":[{"name":"Gin","valeur":4,"unite":"cL"}],"etapes":["Verser"]}""", "La photo doit être une adresse complète commençant par https://." },
     };
 
     [Theory]
@@ -88,6 +90,49 @@ public class CocktailsApiTests(ApiAvecComptes api) : IClassFixture<ApiAvecCompte
         Assert.Contains(message, detail);
         // Le suffixe technique d'ArgumentException ne doit pas atteindre l'utilisateur.
         Assert.DoesNotContain("(Parameter", detail);
+    }
+
+    [Fact]
+    public async Task Photo_DansLeDetailEtLaListe_PuisRetireeParUneModificationSansPhoto()
+    {
+        var alice = await AliceAsync();
+        string nom = Unique("Photogénique");
+        var creation = await CreerAsync(alice, new
+        {
+            name = nom,
+            photoUrl = " https://images.example/photogenique.jpg ",
+            ingredients = new[] { new { name = "Gin", valeur = 4, unite = "cL" } },
+            etapes = new[] { "Verser" }
+        });
+        Assert.Equal(HttpStatusCode.Created, creation.StatusCode);
+        string id = (await creation.JsonAsync()).GetProperty("id").GetString()!;
+
+        Assert.Equal("https://images.example/photogenique.jpg", (await alice.GetJsonAsync($"/api/cocktails/{id}")).GetProperty("photoUrl").GetString());
+        JsonElement dansLaListe = (await alice.GetJsonAsync("/api/cocktails")).EnumerateArray().Single(c => c.GetProperty("id").GetString() == id);
+        Assert.Equal("https://images.example/photogenique.jpg", dansLaListe.GetProperty("photoUrl").GetString());
+
+        var modification = await alice.PutAsJsonAsync($"/api/cocktails/{id}", Recette(nom, ("Gin", 4, "cL")), Jeton);
+
+        Assert.Equal(HttpStatusCode.OK, modification.StatusCode);
+        Assert.Equal(JsonValueKind.Null, (await alice.GetJsonAsync($"/api/cocktails/{id}")).GetProperty("photoUrl").ValueKind);
+    }
+
+    [Fact]
+    public async Task Creation_PhotoRefusee_NAjouteNiRecetteNiIngredient()
+    {
+        var alice = await AliceAsync();
+        string ingredient = Unique("Ingrédient sans photo");
+
+        var reponse = await CreerAsync(alice, new
+        {
+            name = Unique("Photo refusée"),
+            photoUrl = "http://images.example/a.jpg",
+            ingredients = new[] { new { name = ingredient, valeur = 1, unite = "cL" } },
+            etapes = new[] { "Verser" }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, reponse.StatusCode);
+        Assert.DoesNotContain(ingredient, await alice.GetStringAsync("/api/ingredients", Jeton));
     }
 
     [Fact]

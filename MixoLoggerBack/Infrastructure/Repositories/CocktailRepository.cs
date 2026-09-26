@@ -60,7 +60,8 @@ public class CocktailRepository(MixoLoggerDbContext db) : ICocktailRepository
 				.ExecuteUpdateAsync(colonnes => colonnes
 					.SetProperty(existant => existant.Nom, donnees.Nom)
 					.SetProperty(existant => existant.NomNormalise, donnees.NomNormalise)
-					.SetProperty(existant => existant.Description, donnees.Description));
+					.SetProperty(existant => existant.Description, donnees.Description)
+					.SetProperty(existant => existant.PhotoUrl, donnees.PhotoUrl));
 
 			if (modifiees == 0)
 				throw new KeyNotFoundException($"Cocktail with ID {cocktail.Id} not found.");

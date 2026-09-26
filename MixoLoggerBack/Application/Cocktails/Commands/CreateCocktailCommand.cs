@@ -28,7 +28,7 @@ public class CreateCocktailCommandHandler(
         await saisie.VerifierNomDisponibleAsync(cocktailRepository);
 
         Cocktail cocktail = await saisie.ConstruireAsync(ingredientRepository,
-            composants => new Cocktail(saisie.Name, composants, saisie.Etapes(), saisie.Description, utilisateurCourant.Id));
+            composants => new Cocktail(saisie.Name, composants, saisie.Etapes(), saisie.Description, utilisateurCourant.Id, saisie.PhotoUrl));
 
         await cocktailRepository.AddAsync(cocktail);
 

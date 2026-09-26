@@ -1,3 +1,4 @@
+using Domain.Cocktails;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -45,6 +46,7 @@ public class MixoLoggerDbContext(DbContextOptions<MixoLoggerDbContext> options) 
             cocktail.Property(c => c.NomNormalise).HasMaxLength(200);
             cocktail.HasIndex(c => c.NomNormalise).IsUnique();
             cocktail.Property(c => c.Description).HasMaxLength(2000);
+            cocktail.Property(c => c.PhotoUrl).HasMaxLength(Cocktail.LongueurMaxPhotoUrl);
             cocktail.HasIndex(c => c.AuteurId);
             cocktail.HasMany(c => c.Composants).WithOne().HasForeignKey(c => c.CocktailId).OnDelete(DeleteBehavior.Cascade);
             cocktail.HasMany(c => c.Etapes).WithOne().HasForeignKey(e => e.CocktailId).OnDelete(DeleteBehavior.Cascade);

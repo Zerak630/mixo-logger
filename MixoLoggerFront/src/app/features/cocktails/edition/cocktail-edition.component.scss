@@ -114,6 +114,19 @@
     font-size: 0.8125rem;
     color: var(--mixo-erreur);
   }
+
+  &__aide {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--mixo-texte-secondaire);
+  }
+
+  &__apercu {
+    max-width: 12rem;
+    max-height: 9rem;
+    object-fit: cover;
+    border-radius: 8px;
+  }
 }
 
 .lignes {

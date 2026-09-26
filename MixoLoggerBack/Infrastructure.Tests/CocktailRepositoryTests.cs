@@ -96,6 +96,25 @@ public class CocktailRepositoryTests : BaseDeTest
     }
 
     [Fact]
+    public async Task Photo_EnregistreeRelue_PuisRemplacee_PuisRetiree()
+    {
+        Ingredient gin = await IngredientAsync("Gin");
+        Cocktail original = new(Unique("Photo"), [Composant(gin, 4, "cL")], EtapeRecette.FromOrderedList(["Verser"]),
+            authorId: Auteur, photoUrl: "https://images.example/avant.jpg");
+        await AvecAsync<ICocktailRepository>(depot => depot.AddAsync(original));
+
+        Assert.Equal("https://images.example/avant.jpg", (await LireAsync(original.Id))?.PhotoUrl);
+
+        Cocktail remplacee = original.Modifier(original.Name, [Composant(gin, 4, "cL")], EtapeRecette.FromOrderedList(["Verser"]), photoUrl: "https://images.example/apres.jpg");
+        await AvecAsync<ICocktailRepository>(depot => depot.UpdateAsync(remplacee));
+        Assert.Equal("https://images.example/apres.jpg", (await LireAsync(original.Id))?.PhotoUrl);
+
+        Cocktail retiree = original.Modifier(original.Name, [Composant(gin, 4, "cL")], EtapeRecette.FromOrderedList(["Verser"]));
+        await AvecAsync<ICocktailRepository>(depot => depot.UpdateAsync(retiree));
+        Assert.Null((await LireAsync(original.Id))?.PhotoUrl);
+    }
+
+    [Fact]
     public async Task Modification_RemplaceLignesEtEtapes_ConserveIdentifiantEtAuteur()
     {
         Cocktail original = await EnregistrerAsync();

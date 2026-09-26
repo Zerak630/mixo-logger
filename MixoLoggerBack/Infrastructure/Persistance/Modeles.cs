@@ -32,6 +32,7 @@ public class CocktailDonnees
     public required string NomNormalise { get; set; }
 
     public string? Description { get; set; }
+    public string? PhotoUrl { get; set; }
     public Guid? AuteurId { get; set; }
     public List<ComposantDonnees> Composants { get; set; } = [];
     public List<EtapeDonnees> Etapes { get; set; } = [];

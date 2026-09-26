@@ -14,6 +14,9 @@ public class CocktailDetailDto
     public Guid Id { get; init; }
     public string Name { get; init; }
     public string? Description { get; init; }
+
+    /// <summary>Adresse <c>https</c> de la photo (F9), <c>null</c> sans photo.</summary>
+    public string? PhotoUrl { get; init; }
     public IReadOnlyList<DoseIngredientDto> Ingredients { get; init; }
 
     /// <summary>Étapes dans l'ordre de préparation.</summary>
@@ -38,6 +41,7 @@ public class CocktailDetailDto
         Id = cocktail.Id;
         Name = cocktail.Name;
         Description = cocktail.Description;
+        PhotoUrl = cocktail.PhotoUrl;
         Ingredients = [.. cocktail.Ingredients.Select(composant => new DoseIngredientDto(composant))];
         Etapes = [.. cocktail.EtapeRecettes.OrderBy(etape => etape.Ordre).Select(etape => new EtapeDto(etape.Ordre, etape.Description))];
         Auteur = auteur;

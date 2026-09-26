@@ -16,11 +16,16 @@ public class BarsController(IMediator mediator) : ControllerBase
         return await mediator.Send(new GetMyBarQuery(), cancellationToken);
     }
 
-    /// <summary>Prépare une commande. Tout ou rien : rien n'est décompté si une ligne est infaisable.</summary>
+    /// <summary>
+    /// Prépare une commande. Tout ou rien : rien n'est décompté si une ligne est infaisable.
+    /// Le corps est le tableau des lignes lui-même, sans objet englobant.
+    /// </summary>
     [HttpPost("MakeCocktails")]
-    public async Task<MyBarDto> MakeCocktails(MakeCocktailCommand command, CancellationToken cancellationToken = default)
+    public async Task<MyBarDto> MakeCocktails(
+        [FromBody] IEnumerable<CocktailBarOrder> order,
+        CancellationToken cancellationToken = default)
     {
-        return await mediator.Send(command, cancellationToken);
+        return await mediator.Send(new MakeCocktailCommand { Order = order }, cancellationToken);
     }
 
     /// <summary>Déclare la possession d'un ingrédient (volume facultatif).</summary>

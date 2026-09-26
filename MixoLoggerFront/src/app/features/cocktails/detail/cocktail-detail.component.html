@@ -34,6 +34,11 @@
     </div>
   </div>
 
+  @if (photo(); as src) {
+    <img class="detail__photo" [src]="src" [alt]="'Photo de « ' + cocktail().name + ' »'"
+      referrerpolicy="no-referrer" (error)="photoEnErreur.set(true)" />
+  }
+
   @if (cocktail().description) {
     <p class="detail__description">{{ cocktail().description }}</p>
   }
@@ -54,7 +59,7 @@
       <div class="notes__perso">
         <span id="detail-ma-note" class="notes__libelle">{{ notes().maNote === null ? 'Donne ta note' : 'Ta note' }}</span>
         <p-rating
-          [ngModel]="notes().maNote"
+          [ngModel]="etoiles()"
           (ngModelChange)="noter($event)"
           [readonly]="notationEnCours()"
           aria-labelledby="detail-ma-note" />

@@ -33,7 +33,8 @@ internal static class Traduction
                 .Select(composant => new CocktailIngredient(composant.Ingredient!.VersDomaine(), new Dose(composant.Valeur, composant.Unite))),
             donnees.Etapes.Select(etape => new EtapeRecette(etape.Description, etape.Ordre)),
             donnees.Description,
-            donnees.AuteurId);
+            donnees.AuteurId,
+            donnees.PhotoUrl);
 
     /// <summary>La recette et ses lignes. Les ingrédients ne sont référencés que par leur identifiant : ils doivent déjà exister.</summary>
     public static CocktailDonnees VersDonnees(this Cocktail cocktail) => new()
@@ -42,6 +43,7 @@ internal static class Traduction
         Nom = cocktail.Name,
         NomNormalise = IngredientName.Normalize(cocktail.Name),
         Description = cocktail.Description,
+        PhotoUrl = cocktail.PhotoUrl,
         AuteurId = cocktail.AuthorId,
         Composants = [.. cocktail.Ingredients.Select((composant, position) => new ComposantDonnees
         {

@@ -30,12 +30,24 @@ export default class CocktailDetailComponent {
 
   nbVerres = signal(1);
 
+  /** Vrai si la photo n'a pas pu être chargée : elle est alors simplement masquée. */
+  readonly photoEnErreur = linkedSignal({ source: () => this.cocktail().photoUrl, computation: () => false });
+
+  readonly photo = computed(() => this.photoEnErreur() ? null : this.cocktail().photoUrl);
+
   readonly suppressionEnCours = signal(false);
 
   /** Part de celles du cocktail résolu, puis suit les réponses de l'API après chaque notation. */
   readonly notes = linkedSignal(() => this.cocktail().notes);
 
   readonly moyenneAffichee = computed(() => formaterMoyenne(this.notes().moyenne));
+
+  /**
+   * Étoiles affichées. Liées à `notes().maNote`, elles ne revenaient pas après un refus : la
+   * valeur liée, inchangée, ne redescendait jamais dans p-rating, qui gardait la note refusée.
+   * Elles prennent la valeur cliquée, puis celle de chaque réponse (ou de la note restaurée).
+   */
+  readonly etoiles = linkedSignal(() => this.notes().maNote);
 
   readonly notationEnCours = signal(false);
 
@@ -94,6 +106,7 @@ export default class CocktailDetailComponent {
 
   /** Donne ou change sa note. Une valeur vide (étoile désélectionnée) retire la note. */
   noter(valeur: number | null): void {
+    this.etoiles.set(valeur);
     if (valeur === this.notes().maNote) return;
     if (valeur === null) {
       this.retirerNote();

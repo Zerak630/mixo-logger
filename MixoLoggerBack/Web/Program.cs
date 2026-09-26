@@ -40,8 +40,8 @@ builder.Services.AddHostedService<Web.Sauvegardes.SauvegardesPeriodiques>();
 
 var app = builder.Build();
 
-app.VerifierComptes();
 await app.Services.MettreAJourBaseAsync();
+await app.SynchroniserComptesAsync();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

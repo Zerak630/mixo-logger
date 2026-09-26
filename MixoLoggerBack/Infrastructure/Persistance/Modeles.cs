@@ -84,6 +84,29 @@ public class LigneStockDonnees
     public string? VolumeUnite { get; set; }
 }
 
+/// <summary>Un compte (F6). Créé depuis la configuration au démarrage, puis modifiable par son titulaire.</summary>
+public class CompteDonnees
+{
+    public Guid Id { get; set; }
+    public required string Identifiant { get; set; }
+
+    /// <summary>Unique : clé de connexion, casse et accents ignorés.</summary>
+    public required string IdentifiantNormalise { get; set; }
+
+    public required string NomAffiche { get; set; }
+    public required string EmpreinteMotDePasse { get; set; }
+    public Guid TamponSecurite { get; set; }
+    public bool Actif { get; set; }
+    public DateTime CreeLe { get; set; }
+
+    /// <summary>
+    /// Identifiant normalisé de l'entrée de configuration qui a créé le compte. Il ne change plus,
+    /// même si le titulaire change d'identifiant : c'est par lui que la configuration retrouve
+    /// le compte (désactivation, réinitialisation du mot de passe).
+    /// </summary>
+    public string? CleConfiguration { get; set; }
+}
+
 public class NoteDonnees
 {
     public Guid CocktailId { get; set; }

@@ -41,6 +41,7 @@ public static class PersistanceExtensions
         services.AddScoped<IIngredientRepository, IngredientRepository>();
         services.AddScoped<IBarRepository, BarRepository>();
         services.AddScoped<INoteRepository, NoteRepository>();
+        services.AddScoped<IUtilisateurRepository, UtilisateurRepository>();
 
         services.AddSingleton(LireOptionsSauvegarde(configuration, chaine, racineContenu));
         services.AddSingleton(TimeProvider.System);

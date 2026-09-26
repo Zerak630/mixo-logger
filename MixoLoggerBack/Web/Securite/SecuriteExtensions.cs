@@ -3,7 +3,6 @@ using System.Threading.RateLimiting;
 using Application.Utilisateurs;
 using Domain.Interfaces;
 using Domain.Interfaces.Repositories;
-using Infrastructure.Repositories;
 using Infrastructure.Securite;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -22,6 +21,7 @@ public static class SecuriteExtensions
     public const string PolitiqueCors = "Front";
     public const string PolitiqueConnexion = "connexion";
     public const string RevendicationNomAffiche = "nom_affiche";
+    public const string RevendicationTampon = "tampon";
 
     public static IServiceCollection AddSecurite(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environnement)
     {
@@ -30,7 +30,6 @@ public static class SecuriteExtensions
             .Configure(options => options.Liste = configuration.GetSection(ComptesOptions.Section).Get<List<CompteConfigure>>() ?? []);
 
         services.AddSingleton<IHacheurMotDePasse, HacheurMotDePasse>();
-        services.AddSingleton<IUtilisateurRepository, UtilisateurRepository>();
         services.AddHttpContextAccessor();
         services.AddScoped<IUtilisateurCourant, UtilisateurCourant>();
 
@@ -57,14 +56,20 @@ public static class SecuriteExtensions
                     OnRedirectToLogin = contexte => EcrireProbleme(contexte.HttpContext, StatusCodes.Status401Unauthorized, "Connexion requise"),
                     OnRedirectToAccessDenied = contexte => EcrireProbleme(contexte.HttpContext, StatusCodes.Status403Forbidden, "Accès refusé"),
 
-                    // Un compte retiré de la configuration perd sa session à la requête suivante,
-                    // au lieu de rester valide jusqu'à l'expiration du cookie.
+                    // Une session est rejetée à la requête suivante, au lieu de rester valide jusqu'à
+                    // l'expiration du cookie, si le compte a été désactivé (retiré de la configuration)
+                    // ou si son mot de passe a changé depuis (tampon différent, ou absent d'une session
+                    // ouverte avant que les comptes ne soient en base).
                     OnValidatePrincipal = async contexte =>
                     {
                         string? id = contexte.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                        string? tampon = contexte.Principal?.FindFirstValue(RevendicationTampon);
                         IUtilisateurRepository depot = contexte.HttpContext.RequestServices.GetRequiredService<IUtilisateurRepository>();
 
-                        if (!Guid.TryParse(id, out Guid guid) || await depot.GetByIdAsync(guid) is null)
+                        if (!Guid.TryParse(id, out Guid guid)
+                            || await depot.GetByIdAsync(guid) is not { } compte
+                            || !Guid.TryParse(tampon, out Guid tamponSession)
+                            || tamponSession != compte.TamponSecurite)
                         {
                             contexte.RejectPrincipal();
                             await contexte.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -120,19 +125,47 @@ public static class SecuriteExtensions
         return services;
     }
 
-    /// <summary>Instancie les comptes au démarrage : une configuration invalide arrête l'API tout de suite.</summary>
-    public static WebApplication VerifierComptes(this WebApplication app)
+    /// <summary>
+    /// Accorde les comptes en base avec la configuration, après les migrations : une configuration
+    /// invalide arrête l'API tout de suite.
+    /// </summary>
+    public static async Task SynchroniserComptesAsync(this WebApplication app)
     {
-        var depot = (UtilisateurRepository)app.Services.GetRequiredService<IUtilisateurRepository>();
+        BilanComptes bilan = await app.Services.SynchroniserComptesAsync(
+            app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ComptesOptions>>().Value.Liste,
+            app.Services.GetRequiredService<IHacheurMotDePasse>());
 
-        if (depot.Nombre == 0)
+        if (bilan.Actifs == 0)
             app.Logger.LogWarning(
-                "Aucun compte configuré : personne ne pourra se connecter. Déclare-les dans la section « {Section} » (cf. docs/MVP.md §10.2).",
+                "Aucun compte actif : personne ne pourra se connecter. Déclare-les dans la section « {Section} » (cf. docs/MVP.md §10.2).",
                 ComptesOptions.Section);
         else
-            app.Logger.LogInformation("{Nombre} compte(s) chargé(s).", depot.Nombre);
+            app.Logger.LogInformation(
+                "{Actifs} compte(s) actif(s) ; créés : {Crees}, réactivés : {Reactives}, mots de passe réinitialisés : {Reinitialises}, désactivés : {Desactives}.",
+                bilan.Actifs, bilan.Crees, bilan.Reactives, bilan.Reinitialises, bilan.Desactives);
 
-        return app;
+        if (bilan.Reinitialises > 0)
+            app.Logger.LogWarning(
+                "Mot(s) de passe réinitialisé(s) depuis la configuration : remets « ReinitialiserMotDePasse » à false, sinon chaque démarrage les écrasera.");
+    }
+
+    /// <summary>Pose le cookie de session : l'Id, l'identifiant, le nom affiché et le tampon de sécurité du compte.</summary>
+    public static Task OuvrirSessionAsync(this HttpContext contexte, UtilisateurDto utilisateur, Guid tamponSecurite)
+    {
+        ClaimsIdentity identite = new(
+            [
+                new Claim(ClaimTypes.NameIdentifier, utilisateur.Id.ToString()),
+                new Claim(ClaimTypes.Name, utilisateur.Identifiant),
+                new Claim(RevendicationNomAffiche, utilisateur.NomAffiche),
+                new Claim(RevendicationTampon, tamponSecurite.ToString())
+            ],
+            CookieAuthenticationDefaults.AuthenticationScheme);
+
+        return contexte.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identite),
+            // Session conservée à la fermeture du navigateur, jusqu'à 14 jours d'inactivité.
+            new AuthenticationProperties { IsPersistent = true });
     }
 
     private static Task EcrireProbleme(HttpContext contexte, int statut, string titre, string? detail = null)

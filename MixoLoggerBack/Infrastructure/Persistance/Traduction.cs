@@ -1,6 +1,7 @@
 using Domain.Cocktails;
 using Domain.MyBar;
 using Domain.Notes;
+using Domain.Utilisateurs;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistance;
@@ -84,6 +85,20 @@ internal static class Traduction
             VolumeValeur = ligne.Value.Volume?.Value,
             VolumeUnite = ligne.Value.Volume?.Unit.ToString()
         })];
+
+    public static Utilisateur VersDomaine(this CompteDonnees donnees) =>
+        Utilisateur.Reconstituer(donnees.Id, donnees.Identifiant, donnees.NomAffiche, donnees.EmpreinteMotDePasse, donnees.TamponSecurite, donnees.Actif, donnees.CreeLe);
+
+    /// <summary>Copie l'état du compte dans son modèle de stockage, sans toucher à <see cref="CompteDonnees.CleConfiguration"/>.</summary>
+    public static void Appliquer(this CompteDonnees donnees, Utilisateur utilisateur)
+    {
+        donnees.Identifiant = utilisateur.Identifiant;
+        donnees.IdentifiantNormalise = utilisateur.IdentifiantNormalise;
+        donnees.NomAffiche = utilisateur.NomAffiche;
+        donnees.EmpreinteMotDePasse = utilisateur.EmpreinteMotDePasse;
+        donnees.TamponSecurite = utilisateur.TamponSecurite;
+        donnees.Actif = utilisateur.Actif;
+    }
 
     public static Note VersDomaine(this NoteDonnees donnees) =>
         Note.Reconstituer(donnees.CocktailId, donnees.UtilisateurId, donnees.Valeur, donnees.NoteeLe);

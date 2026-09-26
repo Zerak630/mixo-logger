@@ -1,68 +1,44 @@
-using Domain.Interfaces;
 using Domain.Interfaces.Repositories;
 using Domain.Utilisateurs;
-using Infrastructure.Securite;
-using Microsoft.Extensions.Options;
+using Infrastructure.Persistance;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repositories;
 
-/// <summary>
-/// Comptes déclarés en configuration, hachés une fois pour toutes au démarrage.
-/// </summary>
-/// <remarks>
-/// À enregistrer en singleton : le hachage PBKDF2 est volontairement lent, il ne doit pas
-/// être refait à chaque requête.
-/// </remarks>
-public class UtilisateurRepository : IUtilisateurRepository
+/// <summary>Comptes en base. Créés depuis la configuration par <c>SynchroniserComptesAsync</c>.</summary>
+public class UtilisateurRepository(MixoLoggerDbContext db) : IUtilisateurRepository
 {
-    private readonly Dictionary<string, Utilisateur> _parIdentifiant;
-    private readonly Dictionary<Guid, Utilisateur> _parId;
-
-    public UtilisateurRepository(IOptions<ComptesOptions> options, IHacheurMotDePasse hacheur)
+    public async Task<Utilisateur?> GetByIdentifiantAsync(string identifiant)
     {
-        ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(hacheur);
+        string normalise = Utilisateur.Normaliser(identifiant ?? string.Empty);
+        if (normalise.Length == 0)
+            return null;
 
-        List<Utilisateur> utilisateurs = [.. Valider(options.Value.Liste ?? [])
-            .Select(compte => new Utilisateur(compte.Identifiant, compte.NomAffiche ?? string.Empty, hacheur.Hacher(compte.MotDePasse)))];
-
-        _parIdentifiant = utilisateurs.ToDictionary(utilisateur => utilisateur.IdentifiantNormalise);
-        _parId = utilisateurs.ToDictionary(utilisateur => utilisateur.Id);
+        return (await db.Comptes.AsNoTracking().FirstOrDefaultAsync(compte => compte.IdentifiantNormalise == normalise && compte.Actif))?.VersDomaine();
     }
 
-    public int Nombre => _parId.Count;
+    public async Task<Utilisateur?> GetByIdAsync(Guid id) =>
+        (await db.Comptes.AsNoTracking().FirstOrDefaultAsync(compte => compte.Id == id && compte.Actif))?.VersDomaine();
 
-    public Task<Utilisateur?> GetByIdentifiantAsync(string identifiant) =>
-        Task.FromResult(_parIdentifiant.GetValueOrDefault(Utilisateur.Normaliser(identifiant ?? string.Empty)));
-
-    public Task<Utilisateur?> GetByIdAsync(Guid id) =>
-        Task.FromResult(_parId.GetValueOrDefault(id));
-
-    /// <summary>
-    /// Une configuration invalide arrête le démarrage avec un message explicite, plutôt que de
-    /// laisser un compte inutilisable ou un mot de passe faible passer inaperçu.
-    /// </summary>
-    private static IEnumerable<CompteConfigure> Valider(IReadOnlyList<CompteConfigure> comptes)
+    public async Task MettreAJourAsync(Utilisateur utilisateur)
     {
-        HashSet<string> vus = [];
+        ArgumentNullException.ThrowIfNull(utilisateur);
 
-        for (int i = 0; i < comptes.Count; i++)
+        try
         {
-            CompteConfigure compte = comptes[i];
-            string ou = $"{ComptesOptions.Section}:{i}";
+            CompteDonnees compte = await db.Comptes.FirstOrDefaultAsync(c => c.Id == utilisateur.Id)
+                ?? throw new KeyNotFoundException($"Compte {utilisateur.Id} introuvable.");
 
-            if (string.IsNullOrWhiteSpace(compte.Identifiant) || Utilisateur.Normaliser(compte.Identifiant).Length == 0)
-                throw new InvalidOperationException($"Configuration « {ou} » : l'identifiant est obligatoire.");
-
-            if ((compte.MotDePasse ?? string.Empty).Length < ComptesOptions.LongueurMinimaleMotDePasse)
-                throw new InvalidOperationException(
-                    $"Configuration « {ou} » ({compte.Identifiant}) : le mot de passe doit faire au moins {ComptesOptions.LongueurMinimaleMotDePasse} caractères.");
-
-            if (!vus.Add(Utilisateur.Normaliser(compte.Identifiant)))
-                throw new InvalidOperationException(
-                    $"Configuration « {ou} » : l'identifiant « {compte.Identifiant} » est déclaré plusieurs fois (casse et accents ignorés).");
-
-            yield return compte;
+            compte.Appliquer(utilisateur);
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException erreur) when (MixoLoggerDbContext.EstViolationUnicite(erreur))
+        {
+            throw new InvalidOperationException($"L'identifiant « {utilisateur.Identifiant} » est déjà pris.", erreur);
+        }
+        finally
+        {
+            db.ChangeTracker.Clear();
         }
     }
 }

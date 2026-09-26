@@ -22,6 +22,8 @@ public class DomainExceptionHandler(IProblemDetailsService problemDetailsService
         (int status, string title) = exception switch
         {
             ActionNonAutoriseeException => (StatusCodes.Status403Forbidden, "Action non autorisée"),
+            // Compte désactivé pendant la requête : la session n'a plus de titulaire.
+            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Connexion requise"),
             KeyNotFoundException => (StatusCodes.Status404NotFound, "Ressource introuvable"),
             ArgumentException => (StatusCodes.Status400BadRequest, "Requête invalide"),
             InvalidOperationException => (StatusCodes.Status409Conflict, "Opération impossible"),

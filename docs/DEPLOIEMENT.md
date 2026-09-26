@@ -152,7 +152,7 @@ Pour restaurer une copie venue d'ailleurs, la déposer d'abord dans le volume :
 | Adresse du client | Caddy transmet `X-Forwarded-For` / `X-Forwarded-Proto` ; l'API ne les croit **que** depuis `172.30.0.0/24` (`ReverseProxy__ReseauxDeConfiance__0`). Un `X-Forwarded-For` forgé par le client est remplacé par Caddy : la limitation par IP porte sur le vrai client |
 | Cookies | `Secure` (production), `HttpOnly`, `SameSite=Strict` ; clés de chiffrement dans `Donnees/Cles`, conservées d'un redéploiement à l'autre. Elles y sont en clair (avertissement « No XML encryptor configured » dans le journal) : le volume doit rester réservé au serveur |
 | En-têtes | CSP sans script en ligne (styles en ligne permis pour OptimusUI ; photos depuis tout hôte `https`), `nosniff`, `frame-ancestors 'none'`, pas d'en-tête `Server` |
-| Swagger | Seulement en développement |
+| Documentation de l'API | Swagger UI et `/openapi/v1.json` seulement en développement |
 | Conteneur de l'API | Utilisateur non privilégié (`APP_UID`) |
 
 ---

@@ -127,19 +127,24 @@ public class DeploiementTests
     }
 
     [Theory]
-    // En production, la route n'existe pas : comme toute adresse inconnue, elle tombe sur la politique
-    // « tout protégé par défaut » et répond 401 sans rien servir.
+    // En production, ces routes n'existent pas : comme toute adresse inconnue, elles tombent sur la
+    // politique « tout protégé par défaut » et répondent 401 sans rien servir.
     [InlineData("Development", HttpStatusCode.OK)]
     [InlineData("Production", HttpStatusCode.Unauthorized)]
-    public async Task Swagger_SeulementEnDeveloppement(string environnement, HttpStatusCode attendu)
+    public async Task DocumentationDeLApi_SeulementEnDeveloppement(string environnement, HttpStatusCode attendu)
     {
         await using var baseDeDonnees = new ApiAvecBaseTemporaire();
         await using var api = baseDeDonnees.WithWebHostBuilder(builder => builder.UseEnvironment(environnement));
+        var client = api.CreateClient();
 
-        var reponse = await api.CreateClient().GetAsync("/swagger/v1/swagger.json", Jeton);
+        var document = await client.GetAsync("/openapi/v1.json", Jeton);
+        var interfaceSwagger = await client.GetAsync("/swagger/index.html", Jeton);
 
-        Assert.Equal(attendu, reponse.StatusCode);
-        Assert.Equal(attendu == HttpStatusCode.OK, (await reponse.Content.ReadAsStringAsync(Jeton)).Contains("MixoLogger API"));
+        Assert.Equal(attendu, document.StatusCode);
+        Assert.Equal(attendu, interfaceSwagger.StatusCode);
+        string contenu = await document.Content.ReadAsStringAsync(Jeton);
+        // Le document décrit bien l'API : titre et routes.
+        Assert.Equal(attendu == HttpStatusCode.OK, contenu.Contains("MixoLogger API") && contenu.Contains("/api/Cocktails", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string Messages(Exception erreur)

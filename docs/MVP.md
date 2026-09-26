@@ -58,7 +58,7 @@
 | CSS | Écrit à la main par l'auteur ; OptimusUI réservé aux composants complexes | — |
 | Backend | **.NET 11** (préversion jusqu'au 10/11/2026) | ✅ `net11.0`, SDK épinglé par `global.json` (A1) |
 | Médiateur | **MediatR 13** (CQRS : Commands / Queries) | ✅ En place |
-| API | REST + Swagger / OpenAPI | ✅ En place |
+| API | REST + OpenAPI (généré par ASP.NET Core) + Swagger UI | ✅ En place, en développement seulement |
 | Persistance | **SQLite** via EF Core 11 preview 7 (même préversion que le SDK), migrations au démarrage | ✅ F10 |
 | Authentification | Cookie de session ASP.NET Core, sans Identity complet (§8) | ✅ F6 |
 | Hébergement | Serveur centralisé : Docker Compose, Caddy (HTTPS) | ✅ Prêt, cf. [DEPLOIEMENT.md](DEPLOIEMENT.md) ; mise en ligne après la GA de .NET 11 |
@@ -272,7 +272,7 @@ Décisions à trancher avant d'écrire les migrations : cf. §6.
 
 ## 4. Contrat d'API
 
-Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
+Base : `http://localhost:5213/api` — en développement, Swagger UI sur `/swagger` et document OpenAPI sur `/openapi/v1.json`.
 
 ### 4.1 Existant
 

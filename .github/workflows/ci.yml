@@ -1,0 +1,80 @@
+# Intégration continue : compile et teste le back (.NET 11 preview, épinglé par global.json) et le
+# front (Angular), à chaque pull request et à chaque push sur main.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Un nouveau push sur la même branche annule la vérification devenue inutile.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  back:
+    name: Back (.NET)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v4
+
+      # Installe exactement le SDK de global.json, préversion comprise.
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restauration
+        working-directory: MixoLoggerBack
+        run: dotnet restore
+
+      - name: Compilation (avertissements = erreurs)
+        working-directory: MixoLoggerBack
+        run: dotnet build --no-restore -warnaserror
+
+      - name: Tests
+        working-directory: MixoLoggerBack
+        run: dotnet test --no-build
+
+      # Échoue si un modèle de stockage a changé sans migration, ou si une migration ne correspond
+      # pas au modèle : les migrations se lancent seules au démarrage, sur toutes les bases.
+      - name: Aucune migration en attente
+        run: |
+          dotnet tool restore
+          dotnet tool run dotnet-ef migrations has-pending-model-changes \
+            --project MixoLoggerBack/Infrastructure \
+            --startup-project MixoLoggerBack/Infrastructure
+
+  front:
+    name: Front (Angular)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: MixoLoggerFront
+    steps:
+      - uses: actions/checkout@v4
+
+      # Angular 22 exige Node 22.22.3+ ou 24.15+ (docs/MVP.md §10.1).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: MixoLoggerFront/package-lock.json
+
+      - name: Dépendances
+        run: npm ci
+
+      - name: Build de production
+        run: npm run build
+
+      # Chrome est préinstallé sur les runners ; ChromeHeadlessCI (karma.conf.js) le lance sans écran.
+      - name: Tests
+        run: npm run test:ci

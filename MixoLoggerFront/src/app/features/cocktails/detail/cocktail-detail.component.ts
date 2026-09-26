@@ -37,6 +37,13 @@ export default class CocktailDetailComponent {
 
   readonly moyenneAffichee = computed(() => formaterMoyenne(this.notes().moyenne));
 
+  /**
+   * Étoiles affichées. Liées à `notes().maNote`, elles ne revenaient pas après un refus : la
+   * valeur liée, inchangée, ne redescendait jamais dans p-rating, qui gardait la note refusée.
+   * Elles prennent la valeur cliquée, puis celle de chaque réponse (ou de la note restaurée).
+   */
+  readonly etoiles = linkedSignal(() => this.notes().maNote);
+
   readonly notationEnCours = signal(false);
 
   /** « 12 feuilles » pour 2 verres de Mojito. */
@@ -94,6 +101,7 @@ export default class CocktailDetailComponent {
 
   /** Donne ou change sa note. Une valeur vide (étoile désélectionnée) retire la note. */
   noter(valeur: number | null): void {
+    this.etoiles.set(valeur);
     if (valeur === this.notes().maNote) return;
     if (valeur === null) {
       this.retirerNote();

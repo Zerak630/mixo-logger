@@ -1,0 +1,10 @@
+# Contexte de construction des images (deploiement/*.Dockerfile) : le dépôt entier, sans ce qui se régénère.
+.git
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.angular
+**/coverage
+**/Donnees
+deploiement/.env

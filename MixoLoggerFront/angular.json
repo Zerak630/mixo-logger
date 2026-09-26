@@ -44,7 +44,21 @@
                   "maximumError": "8kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "scripts": true,
+                "fonts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                }
+              },
+              "fileReplacements": [
+                {
+                  "replace": "src/env/env.local.json",
+                  "with": "src/env/env.production.json"
+                }
+              ]
             },
             "development": {
               "optimization": false,

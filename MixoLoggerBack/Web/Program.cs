@@ -1,6 +1,7 @@
 using Domain.Cocktails;
 using Infrastructure.Persistance;
 using Web;
+using Web.Deploiement;
 using Web.Securite;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,25 +12,23 @@ builder.Services.AddExceptionHandler<DomainExceptionHandler>();
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddMvc();
-builder.Services.AddOpenApi();
+// Document OpenAPI généré par ASP.NET Core lui-même : sa version de Microsoft.OpenApi suit toujours
+// celle du framework. Swashbuckle.SwaggerGen, compilé contre une autre version, levait une
+// MissingMethodException en .NET 11 ; seule l'interface Swagger UI (fichiers statiques) est gardée.
+builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
+{
+    document.Info.Title = "MixoLogger API";
+    document.Info.Description = "API de MixoLogger : recettes, Mon bar, notes, comptes.";
+    return Task.CompletedTask;
+}));
 builder.Services.AddControllers()
     .AddJsonOptions(cfg => cfg.JsonSerializerOptions.Converters.Add(new UniteVolumeConverter()));
 
 // Authentification par cookie, tout protégé par défaut, CORS restreint au front (lève B4 et B7).
 builder.Services.AddSecurite(builder.Configuration, builder.Environment);
 
-builder.Services.AddSwaggerGen(builder =>
-{
-    builder.SupportNonNullableReferenceTypes();
-    // Microsoft.OpenApi 3.x a supprimé le sous-espace de noms `Models` :
-    // OpenApiInfo vit désormais directement sous `Microsoft.OpenApi`.
-    builder.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
-    {
-        Title = "MixoLogger API",
-        Version = "v1",
-        Description = "API for MixoLogger application"
-    });
-});
+// Derrière un reverse proxy : en-têtes transférés, clés des cookies conservées (docs/DEPLOIEMENT.md).
+builder.Services.AddDeploiement(builder.Configuration, builder.Environment);
 
 // Configuration structure application
 Application.DependencyInjection.AddApplication(builder.Services);
@@ -43,15 +42,14 @@ var app = builder.Build();
 await app.Services.MettreAJourBaseAsync();
 await app.SynchroniserComptesAsync();
 
-// Configure the HTTP request pipeline.
+app.UseDeploiement();
+app.UseExceptionHandler();
+
+// La documentation de l'API reste en développement : en production, rien ne la rend utile au public.
 if (app.Environment.IsDevelopment())
 {
-    // app.MapOpenApi();
+    app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "MixoLogger API"));
 }
-
-app.UseExceptionHandler();
-app.UseSwagger();
-app.UseSwaggerUI();
 app.UseCors(SecuriteExtensions.PolitiqueCors);
 app.UseAuthentication();
 app.UseAuthorization();
@@ -59,6 +57,10 @@ app.UseRateLimiter();
 //app.UsePathBase("/api");
 app.MapGet("/ping", () => Results.Ok("pong")).AllowAnonymous();
 app.MapControllers(); // Expose controllers
+
+// Document OpenAPI (/openapi/v1.json), en développement seulement, comme l'interface qui le lit.
+if (app.Environment.IsDevelopment())
+    app.MapOpenApi().AllowAnonymous();
 
 //app.UseHttpsRedirection();
 app.Run();

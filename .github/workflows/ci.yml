@@ -78,3 +78,50 @@ jobs:
       # Chrome est préinstallé sur les runners ; ChromeHeadlessCI (karma.conf.js) le lance sans écran.
       - name: Tests
         run: npm run test:ci
+
+  deploiement:
+    name: Déploiement (Docker + Caddy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: deploiement
+    steps:
+      - uses: actions/checkout@v7
+
+      # La pile complète, telle qu'en production, sur « localhost » (certificat de l'autorité locale de Caddy).
+      - name: Configuration de test
+        run: |
+          cat > .env <<'CONF'
+          DOMAINE=localhost
+          Comptes__0__Identifiant=ci
+          Comptes__0__MotDePasse=mot-de-passe-de-la-ci
+          CONF
+
+      - name: Construction des images
+        run: docker compose build
+
+      - name: Démarrage
+        run: docker compose up -d
+
+      # Garde la session ouverte par le script : il finit en épuisant la limite de connexions par IP,
+      # une nouvelle connexion serait refusée (429) pendant une minute.
+      - name: Vérification de bout en bout
+        run: COOKIES_SORTIE="$PWD/cookies" ./verifier.sh https://localhost ci mot-de-passe-de-la-ci
+
+      # Conteneurs recréés, volumes gardés : la session ouverte avant doit rester valide (clés conservées).
+      - name: Redéploiement sans perte
+        run: |
+          docker compose down
+          docker compose up -d
+          for _ in $(seq 1 30); do
+            [ "$(curl -sk -o /dev/null -w '%{http_code}' https://localhost/api/auth/moi)" = 401 ] && break
+            sleep 2
+          done
+          code=$(curl -sk -b cookies -o /dev/null -w '%{http_code}' https://localhost/api/auth/moi)
+          echo "Session après redéploiement : $code"
+          [ "$code" = 200 ]
+
+      - name: Journaux en cas d'échec
+        if: failure()
+        run: docker compose logs --no-color

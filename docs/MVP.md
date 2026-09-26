@@ -61,7 +61,7 @@
 | API | REST + Swagger / OpenAPI | ✅ En place |
 | Persistance | **SQLite** via EF Core 11 preview 7 (même préversion que le SDK), migrations au démarrage | ✅ F10 |
 | Authentification | Cookie de session ASP.NET Core, sans Identity complet (§8) | ✅ F6 |
-| Hébergement | Serveur centralisé — **repoussé** | ❌ Rien |
+| Hébergement | Serveur centralisé : Docker Compose, Caddy (HTTPS) | ✅ Prêt, cf. [DEPLOIEMENT.md](DEPLOIEMENT.md) ; mise en ligne après la GA de .NET 11 |
 
 #### Notes sur les versions
 
@@ -88,9 +88,8 @@
 | Sujet | Quand | Pourquoi c'est reporté sans risque |
 |-------|-------|------------------------------------|
 | PostgreSQL | Si SQLite ne suffit plus (plusieurs instances, gros volume, écritures très concurrentes) | EF Core est en place : changer de fournisseur et régénérer les migrations, seul `Infrastructure` change |
-| Docker / `docker-compose` | Avec le déploiement | Le dev tourne très bien en `dotnet run` + `npm start` |
-| Déploiement sur le serveur centralisé | Après la GA de .NET 11 (novembre 2026) | Évite de déployer une préversion |
-| HTTPS, reverse proxy, nom de domaine | Idem | — |
+| Mise en ligne sur le serveur centralisé | Après la GA de .NET 11 (novembre 2026) | Évite de déployer une préversion. Tout est prêt : Docker, Caddy (HTTPS), reverse proxy — cf. [DEPLOIEMENT.md](DEPLOIEMENT.md) |
+| Nom de domaine | Avec la mise en ligne | — |
 
 ### 2.3 Architecture back
 
@@ -622,9 +621,10 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
 | CORS | Restreint aux origines de `Front:Origines` |
 | Redirection après connexion | Le paramètre `?retour=` n'accepte qu'un chemin interne (pas de `//site` ni d'URL absolue) |
 
-**Avant tout déploiement**, reste à faire : HTTPS (le cookie `Secure` l'exige hors développement) et,
-derrière un reverse proxy, la configuration des en-têtes transférés — sans elle, toutes les requêtes
-semblent venir de la même IP et la limitation des tentatives bloque tout le monde à la fois.
+**Déploiement** ✅ (26/09/2026, [DEPLOIEMENT.md](DEPLOIEMENT.md)) : HTTPS terminé par Caddy, API non
+exposée, en-têtes transférés crus **seulement** depuis le réseau du proxy
+(`ReverseProxy:ReseauxDeConfiance`) — la limitation par IP porte sur le vrai client —, clés des cookies
+conservées (`DataProtection:Dossier`), CSP sans script en ligne, Swagger en développement seulement.
 
 **Limites connues** (les précédentes — comptes en configuration seulement, mot de passe non modifiable
 par l'utilisateur, limitation par IP seulement, renommage qui faisait perdre bar et recettes — sont
@@ -677,9 +677,12 @@ Branche : `feat/mon-bar`, rebasée sur le lot A.
 
 ### Lot D — Reporté
 
-~~Persistance~~ ✅ livrée en SQLite (F10). Restent : Docker, déploiement sur le serveur centralisé,
-PostgreSQL seulement si SQLite ne suffit plus. Cf. §2.2. ~~Sauvegardes de la base~~ ✅ automatiques
-depuis le 26/09/2026 (§10.2) ; sur le serveur, reste à copier le dossier `Sauvegardes` hors de la machine.
+~~Persistance~~ ✅ livrée en SQLite (F10). ~~Sauvegardes de la base~~ ✅ automatiques (§10.2).
+~~Docker, HTTPS, reverse proxy~~ ✅ prêts (26/09/2026) : `deploiement/` (images, Caddyfile, Compose,
+`verifier.sh`) et [DEPLOIEMENT.md](DEPLOIEMENT.md), vérifiés de bout en bout par la CI. Restent : la
+**mise en ligne** elle-même (serveur, nom de domaine) après la GA de .NET 11, la copie nocturne des
+sauvegardes hors du serveur (exemple en DEPLOIEMENT.md §5), et PostgreSQL seulement si SQLite ne
+suffit plus. Cf. §2.2.
 
 ---
 
@@ -818,7 +821,7 @@ telles quelles. Nom : `{base}-{aaaaMMjj-HHmmss-fff}-{motif}.db` (heure UTC).
   `IntervalleHeures` (24), `Conservation` (7).
 - **Restaurer** : arrêter l'API, supprimer `mixologger.db` et ses fichiers `-wal` / `-shm`, copier la
   sauvegarde choisie à la place sous le nom `mixologger.db`, relancer.
-- Ces copies sont sur la même machine que la base : sur le serveur, les recopier ailleurs (lot D).
+- Ces copies sont sur la même machine que la base : sur le serveur, les recopier ailleurs ([DEPLOIEMENT.md](DEPLOIEMENT.md) §5).
 
 Faire évoluer le schéma : modifier `Infrastructure/Persistance` (modèles ou `MixoLoggerDbContext`),
 puis générer une migration avec l'outil local `dotnet-ef` (déclaré dans `dotnet-tools.json`, à la

@@ -38,7 +38,7 @@
 | F6 | Se connecter | Must | ✅ Connexion / déconnexion réelles, cookie de session HttpOnly, toute l'application protégée. Comptes en configuration hors dépôt (§10.2) |
 | F7 | Noter un cocktail (⭐) | Should | ✅ Note de 1 à 5 par utilisateur (modifiable, retirable), moyenne et nombre de notes sur la carte et le détail |
 | F8 | Recherche / filtres | Should | ✅ Recherche par nom, description ou ingrédient (alias compris, sans accents ni casse, tous les mots requis) ; filtres « Seulement ce que je peux faire », « Mes recettes », note minimale |
-| F9 | Photo de cocktail | Could | ❌ Non traité (stockage non décidé) |
+| F9 | Photo de cocktail | Could | ✅ Par adresse `https` d'une image hébergée ailleurs (pas d'envoi de fichiers, §6.1-5) : sur la carte, le détail et le formulaire, avec aperçu ; illustration générée en repli si l'image ne charge pas |
 | F10 | Persistance des données entre deux redémarrages | Later | ✅ SQLite + EF Core : recettes, référentiel d'ingrédients, bars et notes survivent au redémarrage. Migrations appliquées au démarrage, jeu initial inséré une seule fois (§10.2). Les comptes restent en configuration |
 
 > Les données sont dans **un seul fichier** (`MixoLoggerBack/Web/Donnees/mixologger.db` par défaut,
@@ -111,7 +111,7 @@ MixoLoggerBack/
 └── Web.Tests/            # Tests d'intégration : API complète, base SQLite temporaire par fixture
 ```
 
-**Tests back** — `dotnet test` depuis `MixoLoggerBack` (366 tests au 15/09/2026, une vingtaine de secondes) :
+**Tests back** — `dotnet test` depuis `MixoLoggerBack` (389 tests au 26/09/2026, une vingtaine de secondes) :
 
 | Projet | Porte sur | Notamment |
 |--------|-----------|-----------|
@@ -157,7 +157,7 @@ JavaScript. Au démarrage, `GET /api/auth/moi` le restaure avant la première na
 L'URL de l'API est lue depuis `src/env/env.local.json` (`apiUrl`), chargée par `ConfigService`.
 
 **Tests front** — `npm run test:ci` depuis `MixoLoggerFront` (Karma + Jasmine, Chrome sans écran,
-140 tests au 26/09/2026, une dizaine de secondes). `npm test` garde le mode interactif (navigateur
+149 tests au 26/09/2026, une dizaine de secondes). `npm test` garde le mode interactif (navigateur
 visible, relance à chaque modification). Chaque `*.spec.ts` est à côté du fichier qu'il teste :
 
 | Zone | Notamment |
@@ -167,7 +167,9 @@ visible, relance à chaque modification). Chaque `*.spec.ts` est à côté du fi
 | Écrans | Connexion, carte, liste, détail (notes, verres, suppression), édition (doublons par alias, recette nettoyée à l'envoi, recette d'autrui), Mon Bar (volume suivi, `409` → rechargement) |
 
 Les services HTTP sont remplacés par des doublures (`jasmine.createSpyObj`) ou par
-`HttpTestingController` ; aucun test n'appelle l'API. Vérifiés par mutation, comme le back.
+`HttpTestingController` ; aucun test n'appelle l'API. Le chargement des photos est neutralisé
+(espion sur `HTMLImageElement.src`) : son échec réseau, asynchrone, rendrait les tests instables.
+Vérifiés par mutation, comme le back.
 
 > Chrome refuse de démarrer en `root` avec son bac à sable (conteneur, CI) : le lanceur
 > `ChromeHeadlessCI` de `karma.conf.js` le désactive. `CHROME_BIN` doit désigner Chrome ou Chromium
@@ -193,6 +195,7 @@ erDiagram
         guid Id
         string Name
         string Description
+        string PhotoUrl
     }
     INGREDIENT {
         guid Id
@@ -243,6 +246,10 @@ erDiagram
   deux fois le même ingrédient (alias compris). L'unicité du nom de recette (sans accents ni casse) est
   vérifiée par l'application, puis garantie par un index unique en base (F10) : de deux créations
   simultanées du même nom, une seule passe, l'autre reçoit un `409`.
+- **`Cocktail.PhotoUrl`** (F9), facultative : seule une URL absolue en `https`, sans identifiants, de
+  2000 caractères au plus est acceptée, et conservée sous sa forme canonique. Une image en `http`
+  serait bloquée ou signalée une fois l'application servie en HTTPS ; `javascript:` ou `data:` n'ont
+  rien à faire dans un attribut `src`. `Modifier()` remplace tout : sans photo, elle est retirée.
 
 ### 3.2 À ajouter pour couvrir les objectifs
 
@@ -273,12 +280,12 @@ Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
 | Verbe | Route | Corps | Retour | Notes |
 |-------|-------|-------|--------|-------|
 | `GET` | `/ping` | — | `"pong"` | Healthcheck |
-| `GET` | `/api/cocktails` | — | `CocktailResumeDto[]` | `realisable` + `manques` (`ingredient`, `raison` : `Absent` \| `Insuffisant`) évalués contre **le bar de l'utilisateur connecté** ; `ingredients` (noms canoniques), `modifiable`, `notes` ; tri : réalisables, puis moins de manques, puis nom. Recherche et filtres (F8) faits côté front sur cette liste |
-| `GET` | `/api/cocktails/{id}` | — | `CocktailDetailDto` | `ingredients` (`ingredientId`, `name`, `valeur`, `unite`), `etapes` (`ordre`, `description`), `auteur` (nom affiché, `null` pour une recette d'origine), `modifiable` (l'utilisateur connecté en est l'auteur) et `notes` ; `404` si absent |
+| `GET` | `/api/cocktails` | — | `CocktailResumeDto[]` | `photoUrl` (`null` sans photo) ; `realisable` + `manques` (`ingredient`, `raison` : `Absent` \| `Insuffisant`) évalués contre **le bar de l'utilisateur connecté** ; `ingredients` (noms canoniques), `modifiable`, `notes` ; tri : réalisables, puis moins de manques, puis nom. Recherche et filtres (F8) faits côté front sur cette liste |
+| `GET` | `/api/cocktails/{id}` | — | `CocktailDetailDto` | `ingredients` (`ingredientId`, `name`, `valeur`, `unite`), `etapes` (`ordre`, `description`), `photoUrl`, `auteur` (nom affiché, `null` pour une recette d'origine), `modifiable` (l'utilisateur connecté en est l'auteur) et `notes` ; `404` si absent |
 | `PUT` | `/api/cocktails/{id}/note` | `{ valeur }` | `NotesDto` | Donne ou remplace sa note (1 à 5), ouvert à tous, recettes d'origine comprises ; `400` hors bornes, `404` si la recette n'existe pas. `NotesDto` = `{ moyenne (au dixième, null sans note), nombre, maNote (null si pas noté) }` |
 | `DELETE` | `/api/cocktails/{id}/note` | — | `NotesDto` | Retire sa note ; idempotent ; `404` si la recette n'existe pas |
 | `GET` | `/api/cocktails/unites` | — | `string[]` | `mL`, `cL`, `dL`, `L`, `piece`, `feuille`, `trait`, `pincee` |
-| `POST` | `/api/cocktails` | `RecetteSaisie` | `201` + `CocktailDetailDto` | `{ name, description?, ingredients: [{ name, valeur, unite }], etapes: string[] }` ; ingrédients par nom (alias compris, créés si inconnus **une fois la recette validée**) ; l'utilisateur connecté devient l'auteur ; `400` contenu invalide, `409` nom déjà pris |
+| `POST` | `/api/cocktails` | `RecetteSaisie` | `201` + `CocktailDetailDto` | `{ name, description?, photoUrl?, ingredients: [{ name, valeur, unite }], etapes: string[] }` ; ingrédients par nom (alias compris, créés si inconnus **une fois la recette validée**) ; l'utilisateur connecté devient l'auteur ; `400` contenu invalide, `409` nom déjà pris |
 | `PUT` | `/api/cocktails/{id}` | `RecetteSaisie` | `CocktailDetailDto` | Remplace tout le contenu ; mêmes règles ; **`403` si l'utilisateur n'est pas l'auteur** (vérifié avant le contenu) ; `404` si absent. Pas de contrôle de version : deux éditions simultanées gardent la dernière |
 | `DELETE` | `/api/cocktails/{id}` | — | `204` | **`403` si l'utilisateur n'est pas l'auteur** ; `404` si absent. Ses lignes, étapes et notes sont supprimées avec elle (cascade en base) |
 | `POST` | `/api/auth/connexion` | `{ identifiant, motDePasse }` | `UtilisateurDto` + cookie | **Anonyme.** `401` même réponse pour identifiant inconnu et mauvais mot de passe ; `429` au-delà de 5 essais par minute et par IP |
@@ -309,8 +316,7 @@ quel dans les formulaires.
 
 ### 4.2 À ajouter
 
-Rien pour les fonctionnalités Must et Should. Restent les photos (F9, lot C5), dont le contrat
-dépend du choix entre upload de fichiers et simple URL (§6.1, point 5).
+Rien : toutes les fonctionnalités du MVP ont leur contrat, photos (F9) comprises.
 
 ### 4.3 Conventions à adopter
 
@@ -377,8 +383,10 @@ Aucun élément factice ni ressource externe : les notifications passent par le 
 
 **Carte cocktail** (`components/cocktail-card`) :
 
-- **Visuel** : en attendant les photos (F9), un dégradé dont la teinte est tirée du nom
-  (`utils/teinte-cocktail.ts`, stable d'un affichage à l'autre) et un verre dessiné en SVG.
+- **Visuel** : la photo de la recette (F9), le bas assombri pour garder le titre lisible. Sans photo,
+  ou si elle ne charge pas, un dégradé dont la teinte est tirée du nom (`utils/teinte-cocktail.ts`,
+  stable d'un affichage à l'autre) et un verre dessiné en SVG. Les images sont chargées sans référent
+  (`referrerpolicy="no-referrer"`) : l'hébergeur ne voit pas l'adresse de l'application.
 - **Navigation** : le nom est un vrai lien (`routerLink`) étendu à toute la carte ; les boutons sont à
   côté du lien, pas dedans (un bouton imbriqué dans un lien est invalide et mal annoncé).
 - **Actions**, visibles au survol ou au focus clavier, en permanence sur écran tactile :
@@ -466,8 +474,11 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
    utilisateur, sans commentaire ; moyenne et nombre de notes affichés à tous, note personnelle à
    chacun. La recherche porte sur le nom, la description et les ingrédients.
 
-5. **Images** : upload de fichiers (→ stockage disque + service de fichiers statiques) ou simple
-   URL saisie à la main ? La seconde suffit largement pour un MVP.
+5. ~~**Images** : upload de fichiers ou simple URL ?~~ ✅ **Tranché (F9, 26/09/2026)** : une simple
+   adresse `https` saisie à la main, l'image restant hébergée ailleurs. Rien à stocker ni à servir,
+   aucune taille de fichier à limiter. Contrepartie : un lien peut mourir (la carte retombe alors sur
+   l'illustration générée), et chaque affichage contacte l'hébergeur de l'image. L'envoi de fichiers
+   reste possible plus tard sans changer le modèle : l'API renverrait simplement sa propre adresse.
 
 6. ~~**Unité de saisie**~~ ✅ **Tranché (F5)** : oui, les recettes acceptent des décomptes (`piece`,
    `feuille`, `trait`, `pincee`) vérifiés par simple présence dans le bar. Cf. `Dose` au §3.1.
@@ -655,7 +666,7 @@ Branche : `feat/mon-bar`, rebasée sur le lot A.
 | **C2** | ✅ `Bar.OwnerId` (un bar par utilisateur, vide au départ) et `Cocktail.AuthorId`. Les handlers obtiennent l'appelant par `IUtilisateurCourant` (lu dans la session, jamais dans le corps de la requête). Détail de recette : `auteur` + `modifiable` ; front : « Modifier » et « Supprimer » (avec confirmation) visibles pour l'auteur seul, page d'édition d'une recette d'autrui remplacée par une explication. 7 tests d'intégration à deux comptes, vérifiés par mutation |
 | **C3** | ~~Création / édition de recette (F5)~~ ✅ livrée avant le lot C ; auteur, règle « seul l'auteur modifie » et suppression ✅ ajoutés avec C2. Formulaire en *Reactive Forms* et non en *Signal Forms* : les composants OptimusUI sont des `ControlValueAccessor`, et Mon Bar comme la connexion utilisent déjà les *Reactive Forms* |
 | **C4** | ✅ Notes (F7) et recherche (F8). Recherche et filtres côté front (`utils/recherche-cocktails.ts`) : la liste complète est déjà chargée, à revoir si le catalogue dépasse quelques centaines de recettes. 19 tests domaine et intégration sur les notes, vérifiés par mutation. **Limite** : l'auteur peut noter sa propre recette. (Depuis F10, les notes sont persistées et supprimées en cascade avec leur recette : plus de note orpheline possible.) |
-| **C5** | Images (F9) |
+| **C5** | ✅ Images (F9) par adresse `https` (§6.1-5). Colonne `Cocktails.PhotoUrl`, migration `PhotoCocktail`, rédigée au format EF Core 11 sans le SDK 11 (indisponible dans l'environnement de travail) : modèle identique à celui généré par `dotnet-ef` 10, test « aucune migration oubliée » vert |
 
 ### Lot D — Reporté
 

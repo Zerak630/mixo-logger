@@ -342,10 +342,12 @@ Rien : toutes les fonctionnalités du MVP ont leur contrat, photos (F9) comprise
 | Gris clair | `#E0E0E0` | Texte secondaire, bordures |
 | Blanc cassé | `#F5F5F5` | Texte principal |
 
-**Mise en œuvre** : le thème passe par un preset (`src/app/styles/customTheme.ts`) qui surcharge la
-palette `primary` d'Aura avec `{purple.*}`. Ces hex ne sont donc pas appliqués tels quels
-aujourd'hui. Après la migration vers OptimusUI, le même fichier devient un `definePreset` importé
-de `@openng/optimus-ui-themes` — l'API est identique à celle de PrimeNG v21.
+**Mise en œuvre** (unifiée le 26/09/2026) : le preset OptimusUI (`src/app/styles/customTheme.ts`,
+`definePreset` d'Aura) est la **source unique des couleurs**. Il déclare la palette ci-dessus en deux
+échelles, `electrique` (`#8A2BE2` en 500, `#6A0DAD` en 700) et `anthracite` (fond `#0A0A0A` en 950,
+cartes `#1E1E1E` en 900, texte `#F5F5F5` en 100, texte secondaire `#E0E0E0` en 200), branchées sur
+`primary` et `surface` du schéma sombre. Composants OptimusUI et styles maison lisent donc les mêmes
+valeurs : boutons, focus, interrupteurs et bordures sont au violet électrique, texte blanc dessus.
 
 **Preset réduit** (26/09/2026) : `customTheme.ts` n'assemble que les jetons des composants utilisés
 (`base` d'Aura + une vingtaine de composants), au lieu du preset complet qui en embarque près de 90 :
@@ -355,28 +357,35 @@ par une navigation écrite à la main sur les jetons `--p-content-*` / `--p-navi
 ceux qu'il utilise en interne (select → tooltip, selectbutton → togglebutton…) : sans ses jetons, il
 s'affiche sans style et sans erreur. Budget du chargement initial : avertissement à 600 kB.
 
-**Écart constaté entre les deux systèmes de couleurs** (26/09/2026) : les composants OptimusUI
-suivent les jetons Aura (violet `#c084fc`, cartes `#18181b`, champs `#09090b`, bordures `#3f3f46`),
-les styles maison la palette `--mixo-*` (violet `#8A2BE2`, cartes `#1E1E1E`, bordures à 15 % de blanc).
-Les deux violets, notamment, cohabitent à l'écran. Les blocs `.champ`, bandeaux d'erreur et cartes
-sont par ailleurs recopiés dans 4 à 6 feuilles de style de composants.
+**Variables `--mixo-*`** : de simples alias, aux noms du métier, des jetons du preset
+(`src/styles.scss`) : `--mixo-fond` → `--p-surface-950`, `--mixo-surface` → `--p-content-background`,
+`--mixo-accent` → `--p-primary-color`, `--mixo-accent-fonce` → `--p-primary-active-color`,
+`--mixo-texte` → `--p-text-color`, `--mixo-texte-secondaire` → `--p-surface-200`, `--mixo-bordure` →
+`--p-content-border-color`, `--mixo-erreur` → `--p-red-400`, `--mixo-succes` → `--p-green-200`,
+`--mixo-rayon` → `--p-border-radius-xl`. **Changer une couleur se fait dans le preset, jamais ici.**
+Avant l'unification, les composants OptimusUI suivaient les jetons Aura d'origine (violet `#c084fc`,
+cartes `#18181b`) et les écrans la palette ci-dessus : deux violets cohabitaient à l'écran.
+
+**Motifs communs** (`src/styles/_communs.scss`) : `.carte` (bloc de contenu), `.bandeau-erreur`
+(erreur d'ensemble d'un formulaire) et `.champ` (`__label`, `__requis`, `__facultatif`, `__aide`,
+`__erreur`). Un écran les pose dans son gabarit et ne garde dans sa feuille que ses particularités
+(largeur, marges, liseré violet de la carte de connexion…).
 
 **Thème sombre forcé** (depuis B14) : `darkModeSelector: '.app-dark'` dans `app.config.ts`, classe
 `app-dark` posée sur `<html>`. L'application ne suit **pas** le réglage clair/sombre du poste. Pour
-les styles écrits à la main, utiliser les variables `--mixo-fond`, `--mixo-surface`, `--mixo-accent`,
-`--mixo-texte`, `--mixo-texte-secondaire`, `--mixo-bordure`, `--mixo-erreur` de `src/styles.scss`,
-jamais de couleurs en dur. Pour vérifier un écran, le tester aussi avec le poste en mode clair : c'est
-ce qui a révélé le défaut.
+les styles écrits à la main, utiliser les variables `--mixo-*` de `src/styles.scss` (ou directement
+un jeton `--p-*`), jamais de couleurs en dur. Pour vérifier un écran, le tester aussi avec le poste
+en mode clair : c'est ce qui a révélé le défaut.
 
 **Répartition assumée** : OptimusUI fournit les **composants complexes** (tables, overlays, dialogs,
 selects, formulaires riches, toasts). Tout le reste — layout, cartes cocktail, typographie, palette —
 est écrit en CSS/SCSS à la main. Concrètement : les composants maison (`cocktail-card`, grilles,
-en-têtes) ne passent pas par la bibliothèque et appliquent directement la palette ci-dessus ; les
-tokens du preset ne servent qu'à accorder les composants OptimusUI à cette palette.
+en-têtes) ne passent pas par la bibliothèque mais lisent les mêmes jetons, via les alias `--mixo-*`.
 
-**Accessibilité** : `#8A2BE2` sur `#0A0A0A` donne un ratio ≈ 3,6:1 — acceptable pour un gros titre
-ou une bordure, **insuffisant pour du texte courant** (seuil AA : 4,5:1). Réserver le violet aux
-accents et garder `#F5F5F5` pour le texte.
+**Accessibilité** : `#8A2BE2` sur `#0A0A0A` donne un ratio ≈ 3,3:1 (2,8:1 sur une carte `#1E1E1E`)
+— acceptable pour un gros titre ou une bordure, **insuffisant pour du texte courant** (seuil AA :
+4,5:1). Réserver le violet aux accents et garder `#F5F5F5` pour le texte. Texte blanc sur fond violet
+(boutons) : ≈ 6:1, conforme.
 
 ### 5.2 Polices
 

@@ -1,14 +1,10 @@
 // B14 — l'ancien style imposait un fond clair (#fafafa) alors que le texte héritait du
-// thème sombre : la page était quasiment illisible. Palette commune : src/styles.scss.
+// thème sombre : la page était quasiment illisible. Palette et motif .carte : src/styles.scss.
 
 .detail {
   max-width: 40rem;
   margin: 1.5rem auto 3rem;
   padding: 1.5rem;
-  color: var(--mixo-texte);
-  background: var(--mixo-surface);
-  border: 1px solid var(--mixo-bordure);
-  border-radius: 12px;
 
   &__entete {
     display: flex;
@@ -35,7 +31,7 @@
     max-height: 22rem;
     margin-top: 1rem;
     object-fit: cover;
-    border-radius: 8px;
+    border-radius: var(--p-border-radius-lg);
   }
 
   &__surtitre {

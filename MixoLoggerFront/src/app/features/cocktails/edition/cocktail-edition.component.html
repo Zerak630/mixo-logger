@@ -1,9 +1,9 @@
 <!-- Accès direct par l'URL à la recette d'un autre : on explique plutôt que d'afficher un formulaire voué au 403. -->
 @if (interdit()) {
-  <section class="edition" aria-labelledby="edition-interdite-titre">
+  <section class="edition carte" aria-labelledby="edition-interdite-titre">
     <p class="edition__surtitre">Modifier la recette</p>
     <h2 id="edition-interdite-titre" class="edition__titre">{{ cocktail()!.name }}</h2>
-    <p class="edition__erreur-globale" role="alert">
+    <p class="edition__erreur-globale bandeau-erreur" role="alert">
       <span class="pi pi-lock" aria-hidden="true"></span>
       {{ cocktail()!.auteur
         ? 'Seul ' + cocktail()!.auteur + ', son auteur, peut modifier cette recette.'
@@ -14,14 +14,14 @@
     </footer>
   </section>
 } @else {
-<form class="edition" [formGroup]="formulaire" (ngSubmit)="enregistrer()" novalidate aria-labelledby="edition-titre">
+<form class="edition carte" [formGroup]="formulaire" (ngSubmit)="enregistrer()" novalidate aria-labelledby="edition-titre">
   <header class="edition__entete">
     <p class="edition__surtitre">{{ enEdition() ? 'Modifier la recette' : 'Nouvelle recette' }}</p>
     <h2 id="edition-titre" class="edition__titre">{{ enEdition() ? cocktail()!.name : 'Ajouter un cocktail' }}</h2>
   </header>
 
   @if (erreurServeur(); as erreur) {
-    <p #bandeauErreur class="edition__erreur-globale" role="alert" tabindex="-1">
+    <p #bandeauErreur class="edition__erreur-globale bandeau-erreur" role="alert" tabindex="-1">
       <span class="pi pi-exclamation-triangle" aria-hidden="true"></span>
       {{ erreur }}
     </p>

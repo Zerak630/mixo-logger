@@ -91,6 +91,12 @@ public static class SecuriteExtensions
 
         int tentativesParMinute = configuration.GetValue("Securite:TentativesDeConnexionParMinute", 5);
 
+        // Par compte, en plus de la limite par IP : 10 échecs sur 15 minutes par défaut.
+        services.AddSingleton(fournisseur => new LimiteurEchecsParCompte(
+            configuration.GetValue("Securite:EchecsParCompte", 10),
+            TimeSpan.FromMinutes(configuration.GetValue("Securite:FenetreEchecsParCompteMinutes", 15)),
+            fournisseur.GetService<TimeProvider>() ?? TimeProvider.System));
+
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

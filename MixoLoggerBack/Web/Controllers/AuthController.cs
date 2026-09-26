@@ -12,26 +12,38 @@ namespace Web.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController(IMediator mediator) : ControllerBase
+public class AuthController(IMediator mediator, LimiteurEchecsParCompte limiteur) : ControllerBase
 {
     /// <summary>
     /// Ouvre une session : pose le cookie HttpOnly et renvoie l'utilisateur. 401 si
-    /// l'identifiant ou le mot de passe est faux (sans dire lequel), 429 après trop d'essais.
+    /// l'identifiant ou le mot de passe est faux (sans dire lequel), 429 après trop d'essais,
+    /// depuis la même adresse IP ou sur le même compte.
     /// </summary>
     [HttpPost("connexion")]
     [AllowAnonymous]
     [EnableRateLimiting(SecuriteExtensions.PolitiqueConnexion)]
     public async Task<ActionResult<UtilisateurDto>> Connexion([FromBody] ConnexionRequest demande, CancellationToken cancellationToken = default)
     {
+        string identifiant = demande.Identifiant ?? string.Empty;
+
+        // Avant toute vérification : un compte bloqué ne laisse plus rien tester, même le bon mot de passe.
+        if (limiteur.EstBloque(identifiant, out TimeSpan attente))
+            return TropDeTentatives(attente);
+
         UtilisateurDto? utilisateur = await mediator.Send(
-            new VerifierIdentifiantsQuery(demande.Identifiant ?? string.Empty, demande.MotDePasse ?? string.Empty),
+            new VerifierIdentifiantsQuery(identifiant, demande.MotDePasse ?? string.Empty),
             cancellationToken);
 
         if (utilisateur is null)
+        {
+            limiteur.EnregistrerEchec(identifiant);
             return Problem(
                 statusCode: StatusCodes.Status401Unauthorized,
                 title: "Connexion refusée",
                 detail: "Identifiant ou mot de passe incorrect.");
+        }
+
+        limiteur.Reinitialiser(identifiant);
 
         ClaimsIdentity identite = new(
             [
@@ -48,6 +60,17 @@ public class AuthController(IMediator mediator) : ControllerBase
             new AuthenticationProperties { IsPersistent = true });
 
         return utilisateur;
+    }
+
+    private ObjectResult TropDeTentatives(TimeSpan attente)
+    {
+        int minutes = Math.Max(1, (int)Math.Ceiling(attente.TotalMinutes));
+        Response.Headers.RetryAfter = ((int)Math.Ceiling(attente.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        return Problem(
+            statusCode: StatusCodes.Status429TooManyRequests,
+            title: "Trop de tentatives",
+            detail: $"Trop de tentatives de connexion sur ce compte. Réessaie dans {minutes} minute{(minutes > 1 ? "s" : "")}.");
     }
 
     /// <summary>Ferme la session. Accessible sans être connecté : une session expirée doit pouvoir se fermer proprement.</summary>

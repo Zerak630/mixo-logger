@@ -37,8 +37,8 @@ describe("httpInterceptor", () => {
 		client.get("/Cocktails").subscribe();
 		client.get("Bars").subscribe();
 
-		http.expectOne(`${API}/Cocktails`).flush([]);
-		http.expectOne(`${API}/Bars`).flush({});
+		expect(http.expectOne(`${API}/Cocktails`).request.url).toBe(`${API}/Cocktails`);
+		expect(http.expectOne(`${API}/Bars`).request.url).toBe(`${API}/Bars`);
 	});
 
 	it("envoie le cookie de session à l'API, qui est une autre origine", () => {

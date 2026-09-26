@@ -735,6 +735,11 @@ cd MixoLoggerFront && npm ci && npm start
 
 Tests : `dotnet test` depuis `MixoLoggerBack`, `npm run test:ci` depuis `MixoLoggerFront`.
 
+**CI** (`.github/workflows/ci.yml`, GitHub Actions) : à chaque pull request et à chaque push sur `main`,
+le back est compilé (avertissements = erreurs) et testé avec le SDK de `global.json`, puis
+`dotnet-ef migrations has-pending-model-changes` vérifie qu'aucune migration ne manque ; le front est
+construit en production et testé (`npm run test:ci`).
+
 L'URL de l'API consommée par le front se configure dans `MixoLoggerFront/src/env/env.local.json`
 (`apiUrl`). Sur un serveur centralisé, ce fichier devra être surchargé par environnement.
 

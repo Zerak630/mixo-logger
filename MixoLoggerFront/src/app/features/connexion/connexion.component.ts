@@ -32,7 +32,8 @@ export default class ConnexionComponent {
   private readonly champMotDePasse = viewChild<ElementRef<HTMLInputElement>>('champMotDePasse');
 
   readonly formulaire = new FormGroup({
-    identifiant: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    // `required` accepte une suite d'espaces : sans le motif, « valider » ne faisait rien, sans message.
+    identifiant: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/\S/)] }),
     motDePasse: new FormControl('', { nonNullable: true, validators: [Validators.required] })
   });
 

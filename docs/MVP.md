@@ -3,7 +3,7 @@
 > Bibliothèque de cocktails pour mixologues et amateurs de soirées.
 > Document de référence : périmètre, stack, modèle de données, contrat d'API, décisions ouvertes.
 >
-> Dernière mise à jour : 2026-09-14
+> Dernière mise à jour : 2026-09-26
 
 ---
 
@@ -125,7 +125,10 @@ cascades, précisément ce que ces tests doivent vérifier. Les tests clés ont 
 
 Règle de dépendance : `Web → Application → Domain`, `Infrastructure → Domain`. Depuis F10,
 `Application` ne référence plus `Infrastructure` : les dépôts sont enregistrés par
-`AddPersistance`, appelé depuis `Web`.
+`AddPersistance`, appelé depuis `Web`. Depuis B8, seul `Web` utilise le SDK Web : `Domain`,
+`Application` et `Infrastructure` sont de simples bibliothèques (`Microsoft.NET.Sdk`) sans
+ASP.NET Core. La liaison HTTP (`[FromRoute]`, `[FromBody]`) reste dans les contrôleurs, qui
+construisent les commandes et requêtes MediatR.
 
 **Persistance** : le domaine n'est pas mappé directement par EF Core. `Infrastructure/Persistance`
 a ses propres modèles de stockage (`IngredientDonnees`, `CocktailDonnees`, `BarDonnees`…), traduits
@@ -152,6 +155,23 @@ JavaScript. Au démarrage, `GET /api/auth/moi` le restaure avant la première na
 (`withCredentials`) et renvoie vers la connexion sur tout `401` (session expirée).
 
 L'URL de l'API est lue depuis `src/env/env.local.json` (`apiUrl`), chargée par `ConfigService`.
+
+**Tests front** — `npm run test:ci` depuis `MixoLoggerFront` (Karma + Jasmine, Chrome sans écran,
+140 tests au 26/09/2026, une dizaine de secondes). `npm test` garde le mode interactif (navigateur
+visible, relance à chaque modification). Chaque `*.spec.ts` est à côté du fichier qu'il teste :
+
+| Zone | Notamment |
+|------|-----------|
+| `utils/` | Recherche de cocktails (alias, tous les mots requis, filtres cumulés), classement de l'autocomplétion, normalisation alignée sur l'API, libellés (virgule décimale, pluriel à partir de 2) |
+| `core/` | Page de retour limitée aux chemins internes, gardes, `401` → connexion (sauf appels d'authentification), cookie envoyé, déconnexion qui vide la session même si l'API échoue, partage (copie ou feuille système) |
+| Écrans | Connexion, carte, liste, détail (notes, verres, suppression), édition (doublons par alias, recette nettoyée à l'envoi, recette d'autrui), Mon Bar (volume suivi, `409` → rechargement) |
+
+Les services HTTP sont remplacés par des doublures (`jasmine.createSpyObj`) ou par
+`HttpTestingController` ; aucun test n'appelle l'API. Vérifiés par mutation, comme le back.
+
+> Chrome refuse de démarrer en `root` avec son bac à sable (conteneur, CI) : le lanceur
+> `ChromeHeadlessCI` de `karma.conf.js` le désactive. `CHROME_BIN` doit désigner Chrome ou Chromium
+> s'il n'est pas trouvé tout seul.
 
 ---
 
@@ -278,9 +298,9 @@ Base : `http://localhost:5213/api` — Swagger UI sur `/swagger`.
 > **Les routes `/api/bars` portent toujours sur le bar de l'appelant.** L'identité vient du cookie
 > de session (`IUtilisateurCourant`), jamais d'un paramètre : impossible de viser le bar d'un autre.
 
-> Le corps de `MakeCocktails` est un **tableau nu**, pas `{ "order": [...] }` : l'attribut `[FromBody]`
-> posé sur la propriété `Order` de la commande lie le corps entier à cette propriété. Contre-intuitif,
-> et directement lié à B8 (les attributs MVC n'ont rien à faire dans `Application`).
+> Le corps de `MakeCocktails` est un **tableau nu**, pas `{ "order": [...] }` : le contrôleur le lie
+> directement (`[FromBody] IEnumerable<CocktailBarOrder>`) puis construit la commande. Avant B8,
+> c'était un `[FromBody]` posé sur la propriété `Order` de la commande MediatR elle-même.
 
 Les erreurs du domaine sont traduites en `ProblemDetails` (RFC 7807) par `Web/DomainExceptionHandler` :
 `ActionNonAutoriseeException` → 403, `KeyNotFoundException` → 404, `ArgumentException` → 400, `InvalidOperationException` → 409. Le suffixe
@@ -496,19 +516,31 @@ tranchés avant d'écrire les fonctionnalités multi-utilisateurs (F5, F7).
   `CocktailDetailDto` (F5 ; le champ `etapeRecettes` est devenu `etapes` côté front). Seul
   `POST /api/cocktails` renvoie un `ActionResult<T>` (pour le `201 Created`) ; les autres actions
   renvoient le DTO nu, les erreurs passant par le gestionnaire d'exceptions.
-- **B6 — Couverture de test partielle.** ✅ Résolu côté back (15/09/2026) : domaine, infrastructure
+- **B6 — Couverture de test partielle.** ✅ **Résolu.** Back (15/09/2026) : domaine, infrastructure
   sur base réelle et API de bout en bout, 366 tests (cf. §2.3). Les handlers `Application` sont couverts
-  à travers l'API plutôt qu'isolément. Reste **tout le front** (Karma/Jasmine installé, aucun test réel).
-  Défauts trouvés en écrivant ces tests, corrigés :
+  à travers l'API plutôt qu'isolément. Front (26/09/2026) : 140 tests (cf. §2.4) ; les deux tests
+  générés à la création du projet échouaient (service manquant, titre « Hello » disparu depuis longtemps).
+  Défauts trouvés en écrivant les tests back, corrigés :
   - renommer une recette vers un nom déjà pris renvoyait une **500** si la vérification préalable était
     contournée (requêtes simultanées) : l'erreur SQLite brute de `ExecuteUpdate` n'était pas interceptée ;
   - un ajout au bar refusé (unité ou niveau invalide) **créait quand même l'ingrédient** dans le
     référentiel, visible ensuite dans l'autocomplétion de tous : la validation passe désormais avant ;
   - trois messages d'erreur du domaine étaient **en anglais** (unité, niveau, volume négatif) alors
     qu'ils s'affichent tels quels dans l'interface.
+
+  Défauts trouvés en écrivant les tests front, corrigés :
+  - connexion : un identifiant fait **uniquement d'espaces** bloquait l'envoi sans aucun message
+    (`Validators.required` accepte `"   "`, le formulaire était donc jugé valide et l'erreur jamais
+    affichée) ;
+  - détail : après un refus de l'API, **les étoiles gardaient la note refusée**. Les notes étaient
+    bien restaurées, mais la valeur liée à `p-rating` (`notes().maNote`) n'avait pas changé, et Angular
+    ne la réécrivait donc pas dans le composant.
 - **B7 — Authentification factice.** ✅ **Corrigé (F6)** : l'identifiant et le mot de passe en dur du
   bundle front ont disparu avec la modale ; la vérification se fait côté API, mots de passe hachés.
-- **B8 — Les projets bibliothèque utilisent `Microsoft.NET.Sdk.Web`.** `Domain`, `Application` et
+- **B8 — Les projets bibliothèque utilisent `Microsoft.NET.Sdk.Web`.** ✅ **Corrigé (26/09/2026)** :
+  les trois passent en `Microsoft.NET.Sdk`, leurs `launchSettings.json` sont supprimés, la liaison HTTP
+  revient aux contrôleurs (contrat d'API inchangé), et `Infrastructure` obtient `PasswordHasher<T>`
+  par le seul paquet `Microsoft.Extensions.Identity.Core`. Constat d'origine : `Domain`, `Application` et
   `Infrastructure` sont déclarés avec le SDK Web + `<OutputType>Library</OutputType>`, ce qui leur
   fait référencer tout le framework ASP.NET Core et génère des `Properties/launchSettings.json`
   inutiles. Corollaire plus gênant : `Application` s'appuie effectivement sur
@@ -681,6 +713,8 @@ Frontend — `http://localhost:4200` :
 ```bash
 cd MixoLoggerFront && npm ci && npm start
 ```
+
+Tests : `dotnet test` depuis `MixoLoggerBack`, `npm run test:ci` depuis `MixoLoggerFront`.
 
 L'URL de l'API consommée par le front se configure dans `MixoLoggerFront/src/env/env.local.json`
 (`apiUrl`). Sur un serveur centralisé, ce fichier devra être surchargé par environnement.

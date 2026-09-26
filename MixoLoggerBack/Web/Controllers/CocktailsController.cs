@@ -21,10 +21,10 @@ public class CocktailsController(IMediator mediator) : ControllerBase
         return await mediator.Send(new GetCocktailsListQuery(), cancellationToken);
     }
 
-    [HttpGet("{Id}")]
-    public async Task<CocktailDetailDto> GetCocktail(GetCocktailByIdQuery request, CancellationToken cancellationToken = default)
+    [HttpGet("{id}")]
+    public async Task<CocktailDetailDto> GetCocktail(Guid id, CancellationToken cancellationToken = default)
     {
-        return await mediator.Send(request, cancellationToken);
+        return await mediator.Send(new GetCocktailByIdQuery { Id = id }, cancellationToken);
     }
 
     /// <summary>Unités de dose acceptées, dans l'ordre où les proposer à la saisie.</summary>

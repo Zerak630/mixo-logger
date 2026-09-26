@@ -3,13 +3,11 @@ using Application.Utilisateurs;
 using Domain.Cocktails;
 using Domain.Interfaces.Repositories;
 using MediatR;
-using Microsoft.AspNetCore.Mvc;
 
 namespace Application.Cocktails.Queries;
 
 public class GetCocktailByIdQuery : IRequest<CocktailDetailDto>
 {
-    [FromRoute]
     public Guid Id { get; init; }
 }
 

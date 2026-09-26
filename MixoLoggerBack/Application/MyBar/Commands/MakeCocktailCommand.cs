@@ -4,13 +4,11 @@ using Domain.Cocktails;
 using Domain.Interfaces.Repositories;
 using Domain.MyBar;
 using MediatR;
-using Microsoft.AspNetCore.Mvc;
 
 namespace Application.MyBar.Commands;
 
 public class MakeCocktailCommand : IRequest<MyBarDto>
 {
-    [FromBody]
     public required IEnumerable<CocktailBarOrder> Order { get; init; }
 }
 

@@ -22,14 +22,24 @@ public class Cocktail : IAggregate
 	/// </summary>
 	public Guid? AuthorId { get; }
 
-	public Cocktail(string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description = null, Guid? authorId = null)
-		: this(Guid.NewGuid(), name, ingredients, etapes, description, authorId)
+	/// <summary>
+	/// Adresse d'une photo hébergée ailleurs (F9), <c>null</c> sans photo. Toujours une URL absolue
+	/// en <c>https</c> : cf. <see cref="NormaliserPhotoUrl"/>.
+	/// </summary>
+	public string? PhotoUrl { get; }
+
+	/// <summary>Longueur maximale de <see cref="PhotoUrl"/>, en caractères.</summary>
+	public const int LongueurMaxPhotoUrl = 2000;
+
+	public Cocktail(string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description = null, Guid? authorId = null, string? photoUrl = null)
+		: this(Guid.NewGuid(), name, ingredients, etapes, description, authorId, photoUrl)
 	{
 	}
 
-	private Cocktail(Guid id, string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description, Guid? authorId)
+	private Cocktail(Guid id, string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description, Guid? authorId, string? photoUrl)
 	{
 		Id = id;
+		PhotoUrl = NormaliserPhotoUrl(photoUrl);
 
 		if (authorId == Guid.Empty)
 			throw new ArgumentException("L'auteur de la recette est invalide.", nameof(authorId));
@@ -70,14 +80,46 @@ public class Cocktail : IAggregate
 	/// Recette relue depuis le stockage, avec son identifiant d'origine. Le contenu est validé
 	/// comme à la création : une donnée corrompue en base ne produit pas de recette invalide.
 	/// </summary>
-	public static Cocktail Reconstituer(Guid id, string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description, Guid? authorId) =>
-		new(id, name, ingredients, etapes, description, authorId);
+	public static Cocktail Reconstituer(Guid id, string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description, Guid? authorId, string? photoUrl = null) =>
+		new(id, name, ingredients, etapes, description, authorId, photoUrl);
 
 	/// <summary>
 	/// La même recette (même <see cref="Id"/>, même auteur) avec un nouveau contenu, validé comme à la création.
+	/// Le contenu est remplacé en entier : sans <paramref name="photoUrl"/>, la photo est retirée.
 	/// </summary>
-	public Cocktail Modifier(string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description = null) =>
-		new(Id, name, ingredients, etapes, description, AuthorId);
+	public Cocktail Modifier(string name, IEnumerable<CocktailIngredient> ingredients, IEnumerable<EtapeRecette> etapes, string? description = null, string? photoUrl = null) =>
+		new(Id, name, ingredients, etapes, description, AuthorId, photoUrl);
+
+	/// <summary>
+	/// Une adresse vide devient « pas de photo ». Sinon, seule une URL absolue en <c>https</c>, sans
+	/// identifiants, est acceptée : une image en <c>http</c> serait bloquée ou signalée par le
+	/// navigateur une fois l'application servie en HTTPS, et <c>javascript:</c> ou <c>data:</c>
+	/// n'ont rien à faire dans un attribut <c>src</c>.
+	/// </summary>
+	/// <returns>L'adresse sous sa forme canonique (<see cref="Uri.AbsoluteUri"/>), ou <c>null</c>.</returns>
+	/// <exception cref="ArgumentException">Adresse trop longue, relative, ou dans un autre schéma que <c>https</c>.</exception>
+	public static string? NormaliserPhotoUrl(string? photoUrl)
+	{
+		if (string.IsNullOrWhiteSpace(photoUrl))
+			return null;
+
+		string saisie = photoUrl.Trim();
+		if (saisie.Length > LongueurMaxPhotoUrl)
+			throw new ArgumentException($"L'adresse de la photo est trop longue ({LongueurMaxPhotoUrl} caractères au plus).", nameof(photoUrl));
+
+		if (!Uri.TryCreate(saisie, UriKind.Absolute, out Uri? adresse) || adresse.Scheme != Uri.UriSchemeHttps)
+			throw new ArgumentException("La photo doit être une adresse complète commençant par https://.", nameof(photoUrl));
+
+		if (!string.IsNullOrEmpty(adresse.UserInfo))
+			throw new ArgumentException("L'adresse de la photo ne doit pas contenir d'identifiant ni de mot de passe.", nameof(photoUrl));
+
+		// La forme canonique peut s'allonger (caractères échappés) : on revérifie.
+		string canonique = adresse.AbsoluteUri;
+		if (canonique.Length > LongueurMaxPhotoUrl)
+			throw new ArgumentException($"L'adresse de la photo est trop longue ({LongueurMaxPhotoUrl} caractères au plus).", nameof(photoUrl));
+
+		return canonique;
+	}
 
 	/// <summary>Vrai si cet utilisateur peut modifier ou supprimer la recette : il en est l'auteur.</summary>
 	public bool EstModifiablePar(Guid utilisateurId) => AuthorId is { } auteur && auteur == utilisateurId;

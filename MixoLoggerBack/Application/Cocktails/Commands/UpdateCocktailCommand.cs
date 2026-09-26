@@ -36,7 +36,7 @@ public class UpdateCocktailCommandHandler(
         await saisie.VerifierNomDisponibleAsync(cocktailRepository, idModifie: actuel.Id);
 
         Cocktail modifie = await saisie.ConstruireAsync(ingredientRepository,
-            composants => actuel.Modifier(saisie.Name, composants, saisie.Etapes(), saisie.Description));
+            composants => actuel.Modifier(saisie.Name, composants, saisie.Etapes(), saisie.Description, saisie.PhotoUrl));
 
         await cocktailRepository.UpdateAsync(modifie);
 

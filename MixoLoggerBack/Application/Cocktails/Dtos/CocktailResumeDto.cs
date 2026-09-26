@@ -15,6 +15,9 @@ public class CocktailResumeDto
     public string Name { get; init; }
     public string? Description { get; init; }
 
+    /// <summary>Adresse <c>https</c> de la photo (F9), <c>null</c> sans photo.</summary>
+    public string? PhotoUrl { get; init; }
+
     /// <summary>Noms canoniques des ingrédients, dans l'ordre de la recette : la recherche porte aussi sur eux.</summary>
     public IReadOnlyList<string> Ingredients { get; init; }
 
@@ -38,6 +41,7 @@ public class CocktailResumeDto
         Id = cocktail.Id;
         Name = cocktail.Name;
         Description = cocktail.Description;
+        PhotoUrl = cocktail.PhotoUrl;
         Ingredients = [.. cocktail.Ingredients.Select(composant => composant.Ingredient.Name)];
         Manques = [.. manques.Select(manque => new ManqueDto(manque))];
         Realisable = Manques.Count == 0;

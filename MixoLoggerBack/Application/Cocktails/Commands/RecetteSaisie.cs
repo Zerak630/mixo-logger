@@ -12,6 +12,9 @@ public class RecetteSaisie
 
     /// <summary>Étapes dans l'ordre : leur position fait leur numéro.</summary>
     public List<string> Etapes { get; init; } = [];
+
+    /// <summary>Adresse <c>https</c> d'une photo hébergée ailleurs (F9) ; vide ou absente pour ne pas en mettre.</summary>
+    public string? PhotoUrl { get; init; }
 }
 
 /// <param name="Name">Nom libre : résolu par le référentiel (alias compris), créé s'il est inconnu.</param>

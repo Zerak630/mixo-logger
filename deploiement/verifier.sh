@@ -6,6 +6,10 @@
 #
 # Sur « localhost », le certificat est émis par l'autorité locale de Caddy : on ne le vérifie pas.
 # Sur un vrai domaine, il doit être valide : passer VERIFIER_CERTIFICAT=1.
+#
+# La dernière vérification épuise la limite de connexions par IP : pendant une minute, plus aucune
+# connexion ne passe depuis cette machine. Pour réutiliser la session ouverte au passage, donner un
+# fichier dans COOKIES_SORTIE : les cookies de la connexion réussie y sont copiés.
 set -euo pipefail
 
 # Pas d'apostrophe dans ces messages : dans ${…:?…}, bash la prendrait pour un guillemet.
@@ -26,7 +30,7 @@ verifier() { if eval "$2"; then ok "$1"; else echec "$1"; fi; }
 
 # Attend que Caddy et l'API répondent (premier démarrage : migrations, certificat).
 for _ in $(seq 1 60); do
-	[[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' "$BASE/api/auth/moi" || true)" == 401 ]] && break
+	[[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' "$BASE/api/auth/moi" 2>/dev/null || true)" == 401 ]] && break
 	sleep 2
 done
 
@@ -56,6 +60,7 @@ code=$("${CURL[@]}" -c "$TEMP/cookies" -D "$TEMP/entetes-connexion" -o /dev/null
 	-H 'Content-Type: application/json' \
 	-d "{\"identifiant\":\"$IDENTIFIANT\",\"motDePasse\":\"$MOT_DE_PASSE\"}" "$BASE/api/auth/connexion")
 verifier "connexion ($code)" '[[ $code == 200 ]]'
+[[ -n "${COOKIES_SORTIE:-}" ]] && cp "$TEMP/cookies" "$COOKIES_SORTIE"
 cookie=$(grep -i "^set-cookie: mixo_session=" "$TEMP/entetes-connexion" || true)
 verifier "cookie Secure, HttpOnly, SameSite=Strict" '[[ $cookie == *[Ss]ecure* && $cookie == *[Hh]ttponly* && $cookie == *[Ss]amesite=[Ss]trict* ]]'
 code=$("${CURL[@]}" -b "$TEMP/cookies" -o "$TEMP/cocktails.json" -w '%{http_code}' "$BASE/api/cocktails")

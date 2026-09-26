@@ -104,14 +104,14 @@ jobs:
       - name: Démarrage
         run: docker compose up -d
 
+      # Garde la session ouverte par le script : il finit en épuisant la limite de connexions par IP,
+      # une nouvelle connexion serait refusée (429) pendant une minute.
       - name: Vérification de bout en bout
-        run: ./verifier.sh https://localhost ci mot-de-passe-de-la-ci
+        run: COOKIES_SORTIE="$PWD/cookies" ./verifier.sh https://localhost ci mot-de-passe-de-la-ci
 
       # Conteneurs recréés, volumes gardés : la session ouverte avant doit rester valide (clés conservées).
       - name: Redéploiement sans perte
         run: |
-          curl -sk -c cookies -o /dev/null -H 'Content-Type: application/json' \
-            -d '{"identifiant":"ci","motDePasse":"mot-de-passe-de-la-ci"}' https://localhost/api/auth/connexion
           docker compose down
           docker compose up -d
           for _ in $(seq 1 30); do

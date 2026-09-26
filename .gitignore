@@ -50,6 +50,8 @@ MixoLoggerBack/Web/Donnees/
 # --- Environment files ---
 .env
 .env.*
+# Modèle de configuration du déploiement, sans secret : versionné.
+!.env.exemple
 
 # --- Others ---
 coverage/

@@ -1,0 +1,37 @@
+# Point d'entrée public de MixoLogger.
+# - HTTPS automatique (Let's Encrypt) pour {$DOMAINE} ; http:// redirige vers https://.
+# - /api/* relayé à l'API, qui n'est pas exposée : Caddy lui transmet X-Forwarded-For et
+#   X-Forwarded-Proto, qu'elle ne croit que depuis le réseau interne (ReverseProxy:ReseauxDeConfiance).
+# - Le reste : le front Angular, avec repli sur index.html pour ses routes (/cocktails/42…).
+
+{$DOMAINE} {
+	encode zstd gzip
+
+	header {
+		# HTTPS seulement, pendant un an, y compris au prochain passage.
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Scripts du site seulement (aucun script en ligne dans le build de production) ; styles en ligne
+		# autorisés, OptimusUI injecte les siens ; photos des recettes depuis n'importe quel hôte https (F9).
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		root * /srv
+		# index.html jamais en cache : il désigne les fichiers de la version en ligne.
+		@index path / /index.html
+		header @index Cache-Control "no-cache"
+		# Le reste porte une empreinte dans son nom : il ne change jamais.
+		@empreinte path_regexp -[A-Za-z0-9]{8}\.(js|css)$
+		header @empreinte Cache-Control "public, max-age=31536000, immutable"
+		try_files {path} /index.html
+		file_server
+	}
+}

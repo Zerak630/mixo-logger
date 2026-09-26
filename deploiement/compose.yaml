@@ -1,0 +1,54 @@
+# MixoLogger en production : docker compose --env-file deploiement/.env -f deploiement/compose.yaml up -d --build
+# Mode d'emploi complet : docs/DEPLOIEMENT.md.
+
+name: mixologger
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploiement/api.Dockerfile
+    restart: unless-stopped
+    # Comptes (Comptes__0__Identifiant…) et réglages : dans .env, jamais dans le dépôt.
+    env_file: .env
+    environment:
+      # Seul Caddy, sur ce réseau, est cru quand il transmet l'adresse du client.
+      ReverseProxy__ReseauxDeConfiance__0: 172.30.0.0/24
+      Front__Origines__0: https://${DOMAINE}
+    volumes:
+      - donnees:/app/Donnees
+    networks:
+      - interne
+    # Aucun port publié : l'API n'est joignable que par Caddy.
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploiement/web.Dockerfile
+    restart: unless-stopped
+    environment:
+      DOMAINE: ${DOMAINE:?renseigner DOMAINE dans deploiement/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      # Certificats Let's Encrypt : à conserver, sinon Caddy les redemande à chaque redémarrage.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    networks:
+      - interne
+
+networks:
+  interne:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  # Base SQLite, sauvegardes automatiques (Sauvegardes/) et clés des cookies (Cles/).
+  donnees:
+  caddy_data:
+  caddy_config:

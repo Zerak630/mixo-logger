@@ -1,5 +1,5 @@
 import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { MenuItem } from '@openng/optimus-ui/api';
 import { Avatar } from '@openng/optimus-ui/avatar';
 import { Button } from '@openng/optimus-ui/button';
@@ -13,6 +13,7 @@ import UserService from './core/user.service';
 	selector: 'app-root',
 	imports: [
 		RouterOutlet,
+		RouterLink,
 		Menubar,
 		Avatar,
 		Button,

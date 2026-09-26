@@ -1,0 +1,71 @@
+<section class="compte" aria-labelledby="compte-titre">
+  <h2 id="compte-titre" class="compte__titre">Mon compte</h2>
+
+  <form class="compte__carte" [formGroup]="profil" (ngSubmit)="enregistrerProfil()" novalidate aria-labelledby="profil-titre">
+    <h3 id="profil-titre" class="compte__intertitre">Identité</h3>
+    <p class="compte__aide">Changer d'identifiant ne fait rien perdre : ton bar, tes recettes et tes notes te suivent.</p>
+
+    @if (erreurProfil(); as message) {
+      <p class="compte__erreur" role="alert">{{ message }}</p>
+    }
+
+    <div class="champ">
+      <label for="compte-identifiant" class="champ__label">Identifiant de connexion</label>
+      <input pInputText id="compte-identifiant" formControlName="identifiant" autocomplete="username"
+        autocapitalize="none" spellcheck="false" required [fluid]="true"
+        [attr.aria-invalid]="tentativeProfil() && profil.controls.identifiant.invalid" />
+      @if (tentativeProfil() && profil.controls.identifiant.invalid) {
+        <p class="champ__erreur">L'identifiant est obligatoire.</p>
+      }
+    </div>
+
+    <div class="champ">
+      <label for="compte-nom" class="champ__label">Nom affiché <span class="champ__facultatif">(l'identifiant par défaut)</span></label>
+      <input pInputText id="compte-nom" formControlName="nomAffiche" autocomplete="nickname" [fluid]="true" />
+    </div>
+
+    <p-button type="submit" label="Enregistrer" icon="pi pi-check" [loading]="profilEnCours()" />
+  </form>
+
+  <form class="compte__carte" [formGroup]="motDePasse" (ngSubmit)="changerMotDePasse()" novalidate aria-labelledby="mdp-titre">
+    <h3 id="mdp-titre" class="compte__intertitre">Mot de passe</h3>
+    <p class="compte__aide">Tes sessions ouvertes sur d'autres appareils seront fermées ; celle-ci reste ouverte.</p>
+
+    @if (erreurMotDePasse(); as message) {
+      <p class="compte__erreur" role="alert">{{ message }}</p>
+    }
+
+    <!-- Identifiant caché : les gestionnaires de mots de passe savent ainsi quel compte mettre à jour. -->
+    <input type="text" class="sr-only" autocomplete="username" [value]="userService.utilisateur()?.identifiant ?? ''" readonly tabindex="-1" aria-hidden="true" />
+
+    <div class="champ">
+      <label for="mdp-actuel" class="champ__label">Mot de passe actuel</label>
+      <input #champActuel pInputText id="mdp-actuel" type="password" formControlName="actuel" autocomplete="current-password" required [fluid]="true"
+        [attr.aria-invalid]="tentativeMotDePasse() && motDePasse.controls.actuel.invalid" />
+    </div>
+
+    <div class="champ">
+      <label for="mdp-nouveau" class="champ__label">Nouveau mot de passe <span class="champ__facultatif">({{ longueurMinimale }} caractères au moins)</span></label>
+      <input pInputText id="mdp-nouveau" type="password" formControlName="nouveau" autocomplete="new-password" required [fluid]="true"
+        [attr.aria-invalid]="tentativeMotDePasse() && motDePasse.controls.nouveau.invalid" />
+      @if (tentativeMotDePasse() && motDePasse.controls.nouveau.hasError('minlength')) {
+        <p class="champ__erreur">{{ longueurMinimale }} caractères au moins.</p>
+      }
+    </div>
+
+    <div class="champ">
+      <label for="mdp-confirmation" class="champ__label">Confirmation</label>
+      <input pInputText id="mdp-confirmation" type="password" formControlName="confirmation" autocomplete="new-password" required [fluid]="true"
+        [attr.aria-invalid]="tentativeMotDePasse() && motDePasse.hasError('confirmation')" />
+      @if (tentativeMotDePasse() && motDePasse.hasError('confirmation')) {
+        <p class="champ__erreur">Les deux saisies ne sont pas identiques.</p>
+      }
+    </div>
+
+    @if (tentativeMotDePasse() && (motDePasse.controls.actuel.invalid || motDePasse.controls.nouveau.hasError('required'))) {
+      <p class="champ__erreur">Renseigne ton mot de passe actuel et le nouveau.</p>
+    }
+
+    <p-button type="submit" label="Changer le mot de passe" icon="pi pi-lock" [loading]="motDePasseEnCours()" />
+  </form>
+</section>

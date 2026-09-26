@@ -71,6 +71,35 @@ describe("AuthService", () => {
 		});
 	});
 
+	describe("compte", () => {
+		it("modifie l'identifiant et le nom, et met à jour l'utilisateur connecté", async () => {
+			userService.setUser(ALICE);
+			const modification = service.modifierCompte("alicia", "Alicia");
+
+			const requete = http.expectOne("/compte");
+			expect(requete.request.method).toBe("PUT");
+			expect(requete.request.body).toEqual({ identifiant: "alicia", nomAffiche: "Alicia" });
+			requete.flush({ ...ALICE, identifiant: "alicia", nomAffiche: "Alicia" });
+			await modification;
+
+			expect(userService.utilisateur()?.identifiant).toBe("alicia");
+			expect(userService.initiales()).toBe("A");
+		});
+
+		it("change le mot de passe sans toucher à la session locale", async () => {
+			userService.setUser(ALICE);
+			const changement = service.changerMotDePasse("ancien-mot-de-passe", "nouveau-mot-de-passe");
+
+			const requete = http.expectOne("/compte/mot-de-passe");
+			expect(requete.request.method).toBe("PUT");
+			expect(requete.request.body).toEqual({ actuel: "ancien-mot-de-passe", nouveau: "nouveau-mot-de-passe" });
+			requete.flush(null, { status: 204, statusText: "No Content" });
+			await changement;
+
+			expect(userService.utilisateur()).toEqual(ALICE);
+		});
+	});
+
 	describe("restaurerSession", () => {
 		it("reprend une session encore valide", async () => {
 			const restauration = service.restaurerSession();

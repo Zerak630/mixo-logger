@@ -347,6 +347,20 @@ palette `primary` d'Aura avec `{purple.*}`. Ces hex ne sont donc pas appliqués 
 aujourd'hui. Après la migration vers OptimusUI, le même fichier devient un `definePreset` importé
 de `@openng/optimus-ui-themes` — l'API est identique à celle de PrimeNG v21.
 
+**Preset réduit** (26/09/2026) : `customTheme.ts` n'assemble que les jetons des composants utilisés
+(`base` d'Aura + une vingtaine de composants), au lieu du preset complet qui en embarque près de 90 :
+chargement initial de 734 à 540 kB (160 à 130 kB transférés), avec le retrait du `Menubar` (remplacé
+par une navigation écrite à la main sur les jetons `--p-content-*` / `--p-navigation-*`) et du
+`DialogService` inutilisé. **Un composant OptimusUI ajouté doit l'être aussi dans le preset**, avec
+ceux qu'il utilise en interne (select → tooltip, selectbutton → togglebutton…) : sans ses jetons, il
+s'affiche sans style et sans erreur. Budget du chargement initial : avertissement à 600 kB.
+
+**Écart constaté entre les deux systèmes de couleurs** (26/09/2026) : les composants OptimusUI
+suivent les jetons Aura (violet `#c084fc`, cartes `#18181b`, champs `#09090b`, bordures `#3f3f46`),
+les styles maison la palette `--mixo-*` (violet `#8A2BE2`, cartes `#1E1E1E`, bordures à 15 % de blanc).
+Les deux violets, notamment, cohabitent à l'écran. Les blocs `.champ`, bandeaux d'erreur et cartes
+sont par ailleurs recopiés dans 4 à 6 feuilles de style de composants.
+
 **Thème sombre forcé** (depuis B14) : `darkModeSelector: '.app-dark'` dans `app.config.ts`, classe
 `app-dark` posée sur `<html>`. L'application ne suit **pas** le réglage clair/sombre du poste. Pour
 les styles écrits à la main, utiliser les variables `--mixo-fond`, `--mixo-surface`, `--mixo-accent`,

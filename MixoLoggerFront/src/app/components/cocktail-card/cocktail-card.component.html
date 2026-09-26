@@ -1,10 +1,15 @@
-<!-- Illustration décorative, générée à partir du nom : aucune image externe (photos : F9). -->
-<div class="visuel" aria-hidden="true">
-  <svg class="visuel__verre" viewBox="0 0 64 64" focusable="false">
-    <path class="visuel__liquide" d="M14 14h36L32 34z" />
-    <path class="visuel__contour" d="M10 10h44L32 36v16m-10 2h20M46 6l-8 16" />
-    <circle class="visuel__garniture" cx="47" cy="7" r="4" />
-  </svg>
+<!-- Décoratif : le nom de la recette est dans le titre. Sans photo (ou si elle ne charge pas),
+     une illustration générée à partir du nom. -->
+<div class="visuel" [class.visuel--photo]="photo()" aria-hidden="true">
+  @if (photo(); as src) {
+    <img class="visuel__photo" [src]="src" alt="" loading="lazy" referrerpolicy="no-referrer" (error)="photoEnErreur.set(true)" />
+  } @else {
+    <svg class="visuel__verre" viewBox="0 0 64 64" focusable="false">
+      <path class="visuel__liquide" d="M14 14h36L32 34z" />
+      <path class="visuel__contour" d="M10 10h44L32 36v16m-10 2h20M46 6l-8 16" />
+      <circle class="visuel__garniture" cx="47" cy="7" r="4" />
+    </svg>
+  }
 </div>
 
 @if (cocktail().realisable) {

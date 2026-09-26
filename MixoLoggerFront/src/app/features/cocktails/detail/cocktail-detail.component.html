@@ -34,6 +34,11 @@
     </div>
   </div>
 
+  @if (photo(); as src) {
+    <img class="detail__photo" [src]="src" [alt]="'Photo de « ' + cocktail().name + ' »'"
+      referrerpolicy="no-referrer" (error)="photoEnErreur.set(true)" />
+  }
+
   @if (cocktail().description) {
     <p class="detail__description">{{ cocktail().description }}</p>
   }

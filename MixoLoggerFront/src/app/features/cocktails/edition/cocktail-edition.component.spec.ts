@@ -13,6 +13,7 @@ const DAIQUIRI: CocktailDetail = {
 	id: "7",
 	name: "Daiquiri",
 	description: null,
+	photoUrl: "https://images.example/daiquiri.jpg",
 	ingredients: [
 		{ ingredientId: "r", name: "Rhum blanc", valeur: 6, unite: "cL" },
 		{ ingredientId: "c", name: "Citron vert", valeur: 3, unite: "cL" }
@@ -31,8 +32,11 @@ describe("CocktailEditionComponent", () => {
 	let composant: CocktailEditionComponent;
 	let cocktails: jasmine.SpyObj<CocktailsService>;
 	let navigate: jasmine.Spy;
+	let src: jasmine.Spy;
 
 	beforeEach(async () => {
+		// Aucun chargement réel des aperçus : son échec, asynchrone, rendrait les tests instables.
+		src = spyOnProperty(HTMLImageElement.prototype, "src", "set");
 		cocktails = jasmine.createSpyObj<CocktailsService>("CocktailsService", ["getUnites", "createCocktail", "updateCocktail"]);
 		cocktails.getUnites.and.returnValue(of(["mL", "cL", "feuille"]));
 		const bar = jasmine.createSpyObj<MyBarService>("MyBarService", ["getIngredients"]);
@@ -116,7 +120,8 @@ describe("CocktailEditionComponent", () => {
 					{ name: "Rhum blanc", valeur: 4.5, unite: "cL" },
 					{ name: "Menthe", valeur: 6, unite: "feuille" }
 				],
-				etapes: ["Piler la menthe."]
+				etapes: ["Piler la menthe."],
+				photoUrl: null
 			});
 			expect(navigate).toHaveBeenCalledWith(["/cocktails", "99"]);
 		});
@@ -151,6 +156,55 @@ describe("CocktailEditionComponent", () => {
 			expect(navigate).not.toHaveBeenCalled();
 		});
 
+		describe("photo", () => {
+			function page(): HTMLElement {
+				return fixture.nativeElement as HTMLElement;
+			}
+
+			it("envoie l'adresse sans espaces autour", () => {
+				cocktails.createCocktail.and.returnValue(of(DAIQUIRI));
+				remplirRecette();
+				composant.photoUrl.setValue("  https://images.example/mojito.jpg ");
+
+				composant.enregistrer();
+
+				expect(cocktails.createCocktail.calls.mostRecent().args[0].photoUrl).toBe("https://images.example/mojito.jpg");
+			});
+
+			it("refuse une adresse qui ne commence pas par https://, avec un message", async () => {
+				remplirRecette();
+				composant.photoUrl.setValue("http://images.example/mojito.jpg");
+
+				composant.enregistrer();
+				await fixture.whenStable();
+
+				expect(cocktails.createCocktail).not.toHaveBeenCalled();
+				expect(page().querySelector("#recette-photo-erreur")?.textContent).toContain("L'adresse doit commencer par https://.");
+			});
+
+			it("montre un aperçu d'une adresse valable, ou prévient si l'image ne charge pas", async () => {
+				composant.photoUrl.setValue("https://images.example/mojito.jpg");
+				await fixture.whenStable();
+
+				const apercu = page().querySelector<HTMLImageElement>("img.champ__apercu")!;
+				expect(src).toHaveBeenCalledWith("https://images.example/mojito.jpg");
+
+				apercu.dispatchEvent(new Event("error"));
+				await fixture.whenStable();
+
+				expect(page().querySelector("img.champ__apercu")).toBeNull();
+				expect(page().textContent).toContain("Aucune image trouvée à cette adresse");
+			});
+
+			it("ne montre pas d'aperçu d'une adresse refusée", async () => {
+				composant.photoUrl.setValue("javascript:alert(1)");
+				await fixture.whenStable();
+
+				expect(page().querySelector("img.champ__apercu")).toBeNull();
+				expect(src).not.toHaveBeenCalled();
+			});
+		});
+
 		it("ne repropose pas dans une ligne un ingrédient déjà présent dans une autre", () => {
 			composant.ingredients.at(0).controls.ingredient.setValue("rhum");
 			composant.ajouterIngredient();
@@ -180,6 +234,7 @@ describe("CocktailEditionComponent", () => {
 
 			expect(composant.enEdition()).toBeTrue();
 			expect(composant.formulaire.controls.name.value).toBe("Daiquiri");
+			expect(composant.photoUrl.value).toBe("https://images.example/daiquiri.jpg");
 			expect(composant.ingredients.getRawValue().map(l => l.ingredient)).toEqual(["Rhum blanc", "Citron vert"]);
 			expect(composant.etapes.getRawValue()).toEqual(["Frapper au shaker.", "Filtrer."]);
 		});
@@ -191,7 +246,10 @@ describe("CocktailEditionComponent", () => {
 			composant.enregistrer();
 
 			expect(cocktails.createCocktail).not.toHaveBeenCalled();
-			expect(cocktails.updateCocktail).toHaveBeenCalledWith("7", jasmine.objectContaining({ name: "Daiquiri" }));
+			expect(cocktails.updateCocktail).toHaveBeenCalledWith("7", jasmine.objectContaining({
+				name: "Daiquiri",
+				photoUrl: "https://images.example/daiquiri.jpg"
+			}));
 			expect(navigate).toHaveBeenCalledWith(["/cocktails", "7"]);
 		});
 

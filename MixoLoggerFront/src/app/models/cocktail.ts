@@ -4,6 +4,8 @@ export interface Cocktail {
 	id: Guid;
 	name: string;
 	description: string | null;
+	/** Adresse `https` d'une photo hébergée ailleurs (F9), `null` sans photo. */
+	photoUrl: string | null;
 }
 
 /** Un cocktail de la liste, évalué contre le bar de l'utilisateur connecté (F4). */
@@ -66,6 +68,8 @@ export interface RecetteSaisie {
 	ingredients: { name: string; valeur: number; unite: UniteDose }[];
 	/** Dans l'ordre : leur position fait leur numéro. */
 	etapes: string[];
+	/** `null` pour ne pas mettre de photo, ou retirer celle qui existe. */
+	photoUrl: string | null;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { afterNextRender, ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, input, signal, viewChild } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, input, linkedSignal, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormArray, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -81,11 +81,25 @@ export default class CocktailEditionComponent {
   readonly formulaire = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required, nonVide, Validators.maxLength(80)] }),
     description: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(500)] }),
+    // Premier filtre seulement : l'API vérifie l'adresse complète et renvoie un message précis.
+    photoUrl: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(2000), Validators.pattern(/^\s*https:\/\/\S/i)] }),
     ingredients: new FormArray<LigneIngredient>([], [Validators.required]),
     etapes: new FormArray<FormControl<string>>([], [Validators.required])
   });
 
   get ingredients() { return this.formulaire.controls.ingredients; }
+  get photoUrl() { return this.formulaire.controls.photoUrl; }
+
+  private readonly photoSaisie = toSignal(this.formulaire.controls.photoUrl.valueChanges, { initialValue: '' });
+
+  /** Aperçu de la photo saisie, dès que l'adresse a une forme acceptable. */
+  readonly apercuPhoto = computed(() => {
+    const adresse = this.photoSaisie().trim();
+    return adresse && this.photoUrl.valid ? adresse : null;
+  });
+
+  /** L'aperçu n'a pas pu être chargé : le lien ne mène probablement pas à une image. */
+  readonly apercuEnErreur = linkedSignal({ source: this.apercuPhoto, computation: () => false });
   get etapes() { return this.formulaire.controls.etapes; }
 
   /**
@@ -179,7 +193,8 @@ export default class CocktailEditionComponent {
         valeur: ligne.valeur!,
         unite: ligne.unite
       })),
-      etapes: valeur.etapes.map(etape => etape.trim())
+      etapes: valeur.etapes.map(etape => etape.trim()),
+      photoUrl: valeur.photoUrl.trim() || null
     };
 
     const existant = this.cocktail();
@@ -220,7 +235,7 @@ export default class CocktailEditionComponent {
       return;
     }
 
-    this.formulaire.patchValue({ name: cocktail.name, description: cocktail.description ?? '' });
+    this.formulaire.patchValue({ name: cocktail.name, description: cocktail.description ?? '', photoUrl: cocktail.photoUrl ?? '' });
     cocktail.ingredients.forEach(ingredient => this.ajouterIngredient(ingredient.name, ingredient.valeur, ingredient.unite));
     [...cocktail.etapes].sort((a, b) => a.ordre - b.ordre).forEach(etape => this.ajouterEtape(etape.description));
   }

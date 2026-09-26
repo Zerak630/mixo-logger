@@ -46,6 +46,26 @@
       <textarea pTextarea id="recette-description" formControlName="description" rows="2" [autoResize]="true"
         placeholder="Un cocktail rafraîchissant à base de…"></textarea>
     </div>
+
+    <div class="champ">
+      <label for="recette-photo" class="champ__label">Photo <span class="champ__facultatif">(facultatif, adresse d'une image en ligne)</span></label>
+      <input pInputText id="recette-photo" formControlName="photoUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false"
+        placeholder="https://…"
+        [invalid]="aDesErreurs(photoUrl)"
+        [attr.aria-invalid]="aDesErreurs(photoUrl)"
+        [attr.aria-describedby]="aDesErreurs(photoUrl) ? 'recette-photo-erreur' : null" />
+      @if (aDesErreurs(photoUrl)) {
+        <p id="recette-photo-erreur" class="champ__erreur">
+          @if (photoUrl.hasError('maxlength')) { 2000 caractères au maximum. } @else { L'adresse doit commencer par https://. }
+        </p>
+      } @else if (apercuPhoto(); as apercu) {
+        @if (apercuEnErreur()) {
+          <p class="champ__aide" role="status">Aucune image trouvée à cette adresse : la carte affichera l'illustration par défaut.</p>
+        } @else {
+          <img class="champ__apercu" [src]="apercu" alt="Aperçu de la photo" referrerpolicy="no-referrer" (error)="apercuEnErreur.set(true)" />
+        }
+      }
+    </div>
   </section>
 
   <fieldset class="edition__bloc" formArrayName="ingredients">

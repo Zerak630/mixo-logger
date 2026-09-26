@@ -10,7 +10,7 @@ import CocktailListComponent from "./cocktail-list.component";
 
 function cocktail(id: string, name: string, champs: Partial<CocktailResume> = {}): CocktailResume {
 	return {
-		id, name, description: null, ingredients: [], realisable: false, manques: [], modifiable: false,
+		id, name, description: null, photoUrl: null, ingredients: [], realisable: false, manques: [], modifiable: false,
 		notes: { moyenne: null, nombre: 0, maNote: null },
 		...champs
 	};

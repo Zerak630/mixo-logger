@@ -30,6 +30,11 @@ export default class CocktailDetailComponent {
 
   nbVerres = signal(1);
 
+  /** Vrai si la photo n'a pas pu être chargée : elle est alors simplement masquée. */
+  readonly photoEnErreur = linkedSignal({ source: () => this.cocktail().photoUrl, computation: () => false });
+
+  readonly photo = computed(() => this.photoEnErreur() ? null : this.cocktail().photoUrl);
+
   readonly suppressionEnCours = signal(false);
 
   /** Part de celles du cocktail résolu, puis suit les réponses de l'API après chaque notation. */

@@ -7,6 +7,7 @@ function cocktail(name: string, champs: Partial<CocktailResume> = {}): CocktailR
 		id: name,
 		name,
 		description: null,
+		photoUrl: null,
 		ingredients: [],
 		realisable: false,
 		manques: [],

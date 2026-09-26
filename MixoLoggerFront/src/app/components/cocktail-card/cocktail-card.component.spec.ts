@@ -12,6 +12,7 @@ const MOJITO: CocktailResume = {
 	id: "42",
 	name: "Mojito",
 	description: null,
+	photoUrl: null,
 	ingredients: ["Rhum blanc", "Menthe", "Citron vert"],
 	realisable: true,
 	manques: [],
@@ -96,6 +97,45 @@ describe("CocktailCardComponent", () => {
 		const note = (await afficher({ notes: { moyenne: 4.3, nombre: 3, maNote: null } })).querySelector(".badge--note")!;
 		expect(note.textContent).toContain("4,3");
 		expect(note.getAttribute("title")).toBe("Note moyenne 4,3 sur 5 (3 notes)");
+	});
+
+	describe("photo", () => {
+		const PHOTO = "https://images.example/mojito.jpg";
+		let src: jasmine.Spy;
+
+		// Aucun chargement réel : son échec, asynchrone, rendrait les tests instables.
+		beforeEach(() => src = spyOnProperty(HTMLImageElement.prototype, "src", "set"));
+
+		it("remplace l'illustration quand la recette en a une", async () => {
+			const carte = await afficher({ photoUrl: PHOTO });
+
+			const photo = carte.querySelector<HTMLImageElement>("img.visuel__photo")!;
+			expect(src).toHaveBeenCalledWith(PHOTO);
+			// Décorative : le nom est déjà dans le titre, et l'adresse n'est pas transmise à l'hébergeur.
+			expect(photo.getAttribute("alt")).toBe("");
+			expect(photo.getAttribute("referrerpolicy")).toBe("no-referrer");
+			expect(carte.querySelector("svg.visuel__verre")).toBeNull();
+		});
+
+		it("garde l'illustration sans photo", async () => {
+			const carte = await afficher();
+
+			expect(carte.querySelector("img")).toBeNull();
+			expect(carte.querySelector("svg.visuel__verre")).not.toBeNull();
+		});
+
+		it("revient à l'illustration si la photo ne charge pas, jusqu'au changement d'adresse", async () => {
+			const carte = await afficher({ photoUrl: PHOTO });
+
+			carte.querySelector("img")!.dispatchEvent(new Event("error"));
+			await fixture.whenStable();
+			expect(carte.querySelector("img")).toBeNull();
+			expect(carte.querySelector("svg.visuel__verre")).not.toBeNull();
+
+			await afficher({ photoUrl: "https://images.example/autre.jpg" });
+			expect(carte.querySelector("img")).not.toBeNull();
+			expect(src).toHaveBeenCalledWith("https://images.example/autre.jpg");
+		});
 	});
 
 	describe("Réaliser", () => {

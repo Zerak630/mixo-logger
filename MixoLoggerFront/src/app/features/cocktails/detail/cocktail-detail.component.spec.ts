@@ -13,6 +13,7 @@ const MOJITO: CocktailDetail = {
 	id: "42",
 	name: "Mojito",
 	description: "Frais et mentholé",
+	photoUrl: null,
 	ingredients: [
 		{ ingredientId: "r", name: "Rhum blanc", valeur: 4.5, unite: "cL" },
 		{ ingredientId: "m", name: "Menthe", valeur: 6, unite: "feuille" },
@@ -80,6 +81,25 @@ describe("CocktailDetailComponent", () => {
 
 		it("range les étapes dans l'ordre de préparation", async () => {
 			expect(textes(await afficher(), ".etapes__etape")).toEqual(["Piler la menthe.", "Ajouter le rhum."]);
+		});
+
+		it("montre la photo, décrite pour les lecteurs d'écran, et la masque si elle ne charge pas", async () => {
+			// Aucun chargement réel : son échec, asynchrone, rendrait le test instable.
+			const src = spyOnProperty(HTMLImageElement.prototype, "src", "set");
+			const page = await afficher({ photoUrl: "https://images.example/mojito.jpg" });
+			const photo = page.querySelector<HTMLImageElement>("img.detail__photo")!;
+
+			expect(src).toHaveBeenCalledWith("https://images.example/mojito.jpg");
+			expect(photo.getAttribute("alt")).toBe("Photo de « Mojito »");
+
+			photo.dispatchEvent(new Event("error"));
+			await fixture.whenStable();
+
+			expect(page.querySelector("img.detail__photo")).toBeNull();
+		});
+
+		it("n'affiche aucune image sans photo", async () => {
+			expect((await afficher()).querySelector("img")).toBeNull();
 		});
 
 		it("signale une recette sans étape", async () => {

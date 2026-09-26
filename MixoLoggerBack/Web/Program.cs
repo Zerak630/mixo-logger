@@ -1,6 +1,7 @@
 using Domain.Cocktails;
 using Infrastructure.Persistance;
 using Web;
+using Web.Deploiement;
 using Web.Securite;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +18,9 @@ builder.Services.AddControllers()
 
 // Authentification par cookie, tout protégé par défaut, CORS restreint au front (lève B4 et B7).
 builder.Services.AddSecurite(builder.Configuration, builder.Environment);
+
+// Derrière un reverse proxy : en-têtes transférés, clés des cookies conservées (docs/DEPLOIEMENT.md).
+builder.Services.AddDeploiement(builder.Configuration, builder.Environment);
 
 builder.Services.AddSwaggerGen(builder =>
 {
@@ -43,15 +47,15 @@ var app = builder.Build();
 await app.Services.MettreAJourBaseAsync();
 await app.SynchroniserComptesAsync();
 
-// Configure the HTTP request pipeline.
+app.UseDeploiement();
+app.UseExceptionHandler();
+
+// La documentation de l'API reste en développement : en production, rien ne la rend utile au public.
 if (app.Environment.IsDevelopment())
 {
-    // app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
-
-app.UseExceptionHandler();
-app.UseSwagger();
-app.UseSwaggerUI();
 app.UseCors(SecuriteExtensions.PolitiqueCors);
 app.UseAuthentication();
 app.UseAuthorization();

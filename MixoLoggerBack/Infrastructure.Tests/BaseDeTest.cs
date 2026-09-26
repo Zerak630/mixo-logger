@@ -21,6 +21,9 @@ public abstract class BaseDeTest : IAsyncLifetime
 
     protected string Fichier => Path.Combine(_dossier, "test.db");
 
+    /// <summary>Dossier de la base de test, supprimé à la fin (sauvegardes comprises).</summary>
+    protected string Dossier => _dossier;
+
     protected ServiceProvider Services => _services ?? throw new InvalidOperationException("Base non initialisée.");
 
     public virtual async ValueTask InitializeAsync()
@@ -30,10 +33,11 @@ public abstract class BaseDeTest : IAsyncLifetime
     }
 
     /// <summary>Les services de persistance tels qu'enregistrés par l'API, sur la chaîne donnée.</summary>
-    protected static ServiceProvider Construire(string chaine, string racineContenu)
+    protected static ServiceProvider Construire(string chaine, string racineContenu, IDictionary<string, string?>? reglages = null)
     {
+        Dictionary<string, string?> valeurs = new(reglages ?? new Dictionary<string, string?>()) { ["ConnectionStrings:MixoLogger"] = chaine };
         IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["ConnectionStrings:MixoLogger"] = chaine })
+            .AddInMemoryCollection(valeurs)
             .Build();
 
         return new ServiceCollection()

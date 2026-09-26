@@ -36,6 +36,7 @@ Application.DependencyInjection.AddApplication(builder.Services);
 
 // Base SQLite (F10) : ConnectionStrings:MixoLogger, chemin relatif au dossier de l'API.
 builder.Services.AddPersistance(builder.Configuration, builder.Environment.ContentRootPath);
+builder.Services.AddHostedService<Web.Sauvegardes.SauvegardesPeriodiques>();
 
 var app = builder.Build();
 
